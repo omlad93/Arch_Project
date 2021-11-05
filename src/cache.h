@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "mesi.h"
 
+#define HIT 1
+#define MISS -1
 #define WORDS 256
 #define BLOCKS 64
 #define BLK_SIZE 4
@@ -22,11 +24,15 @@ typedef struct cahce{
     int mesi_state[BLOCKS];     // the mesi status of the stored blocks
 } cache;
 
-int hit(int address, cache* cache);
+// check if address is cached, return HIT or MISS
+int query(int address, cache* cache);
 
+// read word from cache. if MISS, fetched it throug messi and stall
 int read_word(int address, int* ack, cache* cache);
 
-int write_word(int address, int* ack, cache* cache);
+// write data to cache. if MISS, fetched it throug messi and stall
+int write_word(int address, int data, int* ack, cache* cache);
 
-int fetch_block(int alligned_address); //request a block when a miss occur
+// fetch block throuh messi
+int fetch_block(int alligned_address, cache* cache); //request a block when a miss occur
 
