@@ -58,10 +58,10 @@ typedef struct operation {
 
 /*   SIMP REGISTERS    */
 int REG_FILE[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-pipeline_registers IF_ID;
-pipeline_registers ID_EX;
-pipeline_registers EX_MEM;
-pipeline_registers MEM_WB;
+pipeline_registers *IF_ID;
+pipeline_registers *ID_EX;
+pipeline_registers *EX_MEM;
+pipeline_registers *MEM_WB;
 
 
 int pc;
@@ -86,7 +86,15 @@ void MEM_ex();
 
 void WB_ex();
 
+void start_clock_cycle();
+
+void end_clock_sycle();
+
+void fetch_op(operation* IF_op);
+
+void get_IF_ID_sprn(pipeline_registers* sprn);
+
+
 void simulate_clock_cycle();
 
-void proceed_clock_sycle();
 
