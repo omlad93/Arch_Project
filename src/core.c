@@ -1,11 +1,15 @@
 #include "core.h"
 
 
-void simulate_clock_cycle(){
+void simulate_clock_cycle(int pc){
+
+    char* line = NULL;
 
     start_clock_cycle();
 
-    IF_ex();
+    line = Op_Mem[pc];
+
+    IF_ex(line);
 
     ID_ex();
 
@@ -19,7 +23,101 @@ void simulate_clock_cycle(){
 
 }
 
+void IF_ex(char* line) {
+	int rd, rs, rt, code;
+	char* temp = (char*)calloc(7, sizeof(char));
 
+    IF_op->inst = line;
+
+	//parse op type
+	sprintf(temp, "%s", line);
+	temp[2] = '\0';
+	IF_op->code = strtol(&temp[0], NULL, 16);
+
+	//parse rd
+	sprintf(temp, "%s", line);
+	temp[3] = '\0';
+	IF_op->rd = strtol(&temp[2], NULL, 16);
+
+	//parse rs
+	sprintf(temp, "%s", line);
+	temp[4] = '\0';
+	IF_op->rs = strtol(&temp[3], NULL, 16);
+
+	//parse rt
+	sprintf(temp, "%s", line);
+	IF_op->rt = strtol(&temp[4], NULL, 16);
+
+
+}
+
+void ID_ex(){
+
+    switch (ID_op->code) {
+	case(ADD):
+		ID_op->op_code = &add;
+        return;
+	case(SUB):
+		ID_op->op_code =  &sub;
+        return;
+	case(AND):
+		ID_op->op_code = &and;
+        return;
+	case(OR):
+		ID_op->op_code = &or;
+        return;
+	case(XOR):
+		ID_op->op_code = &xor;
+        return;
+	case(MUL):
+		ID_op->op_code = &mul;
+        return;
+	case(SLL):
+		ID_op->op_code = &sll;
+        return;
+	case(SRA):
+		ID_op->op_code = &sra;
+        return;
+	case(SRL):
+		ID_op->op_code = &srl;
+        return;
+	case(BEQ):
+		ID_op->op_code = &beq;
+        return;
+	case(BNE):
+		ID_op->op_code = &bne;
+        return;
+	case(BLT):
+		ID_op->op_code = &blt;
+        return;
+	case(BJT):
+		ID_op->op_code = &bgt;
+        return;
+	case(BLE):
+		ID_op->op_code = &ble;
+        return;
+	case(BGE):
+		ID_op->op_code = &bge;
+        return;
+	case(JAL):
+		ID_op->op_code = &jal;
+        return;
+	case(LW):
+		ID_op->op_code = &lw;
+        return;
+	case(SW):
+		ID_op->op_code = &sw;
+        return;
+	case(HALT):
+		ID_op->op_code = &halt;
+        return;
+	//if unknown opcode -> do nop
+	default:
+		ID_op->op_code = &nop;
+        return;
+	}
+
+}
 
 void start_clock_cycle(){
 
@@ -70,5 +168,110 @@ void end_clock_sycle(){
     EX_op = ID_op;
     ID_op = IF_op;
     fetch_op(IF_op);
+
+}
+
+/* **********************************************************/
+/*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
+/* **********************************************************/
+//1
+int add(operation* op, int pc) {
+
+}
+
+//2
+int sub(operation* op, int pc) {
+
+}
+
+//3
+int and(operation* op, int pc) {
+
+}
+
+//4
+int or (operation* op, int pc) {
+
+}
+
+//5
+int xor (operation* op, int pc) {
+
+}
+
+//6
+int mul(operation* op, int pc) {
+
+}
+
+//6
+int sll(operation* op, int pc) {
+
+}
+
+//7
+int sra(operation* op, int pc) {
+
+}
+
+//8
+int srl(operation* op, int pc) {
+
+}
+
+//9
+int beq(operation* op, int pc) {
+
+}
+
+//10
+int bne(operation* op, int pc) {
+
+}
+
+//11
+int blt(operation* op, int pc) {
+
+}
+
+//12
+int bgt(operation* op, int pc) {
+
+}
+
+//13
+int ble(operation* op, int pc) {
+
+}
+
+//14
+int bge(operation* op, int pc) {
+
+}
+
+//15
+int jal(operation* op, int pc) {
+
+}
+
+//16
+int lw(operation* op, int pc) {
+
+}
+
+//17
+int sw(operation* op, int pc) {
+
+
+}
+
+
+//21
+int halt(operation* op, int pc) {
+
+}
+
+//assign to $0
+int nop(operation*op, int pc) {
 
 }

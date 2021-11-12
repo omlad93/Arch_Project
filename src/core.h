@@ -45,14 +45,15 @@ typedef struct pipeline_registers {
 }pipeline_registers;
 
 typedef struct operation {
+	int code; //the code of the operation
 	int rd; //rd register
 	int rs; //rs register
 	int rt; //rt register
 
-	int imm_used; // and indicator of using immediate
+	//int imm_used; // and indicator of using immediate
 
 	char* inst; // the opcode line from Imem
-	//int(*op_code)(struct operation* op, int pc); // a function pointer according to opcode
+	int(*op_code)(struct operation* op, int pc); // a function pointer according to opcode
 } operation;
 
 
@@ -75,8 +76,70 @@ operation *EX_op;           //Operation in Execute
 operation *MEM_op;          //Operation in Memory
 operation *WB_op;           //Operation in Write Back
 
+/* **********************************************************/
+/*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
+/* **********************************************************/
+//1
+int add(operation* op, int pc);
 
-void IF_ex();
+//2
+int sub(operation* op, int pc);
+
+//3
+int and(operation* op, int pc);
+
+//4
+int or (operation* op, int pc);
+
+//5
+int xor (operation* op, int pc);
+
+//6
+int mul(operation* op, int pc);
+
+//6
+int sll(operation* op, int pc);
+
+//7
+int sra(operation* op, int pc);
+
+//8
+int srl(operation* op, int pc);
+
+//9
+int beq(operation* op, int pc);
+
+//10
+int bne(operation* op, int pc);
+
+//11
+int blt(operation* op, int pc);
+
+//12
+int bgt(operation* op, int pc);
+
+//13
+int ble(operation* op, int pc);
+
+//14
+int bge(operation* op, int pc);
+
+//15
+int jal(operation* op, int pc);
+
+//16
+int lw(operation* op, int pc);
+
+//17
+int sw(operation* op, int pc);
+
+//21
+int halt(operation* op, int pc);
+
+//assign to $0 or unreconized behivour 
+int nop(operation*op, int pc);
+
+void IF_ex(char* line, operation* op, int pc);
 
 void ID_ex();
 
@@ -94,6 +157,7 @@ void fetch_op(operation* IF_op);
 
 void get_IF_ID_sprn(pipeline_registers* sprn);
 
+void core_exec();
 
 void simulate_clock_cycle();
 
