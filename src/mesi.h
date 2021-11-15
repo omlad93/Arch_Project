@@ -9,10 +9,10 @@
 #define Modified  3
 
 // mesi ops
-#define NOP    0
-#define BusRd  1
-#define BusRdX 2
-#define Flush  3
+#define BusNOP   0
+#define BusRd    1
+#define BusRdX   2
+#define BusFlush 3
 
 //mesi origins
 #define core0 0
@@ -22,10 +22,21 @@
 #define main  4
 
 // memory 
-#define mem_size 1048576 // in words
+#define mem_size 1048576 //  in words
 #define cycle_count 16
 
+// Bus states
+#define empty 0
+#define kick 1
+#define busy 2
+#define finish 3
+
+
+#define _cache_handled(handler) (handler <4)
+
+
 typedef struct mesi_bus{
+    int state;
     int origin;
     int cmd;
     int addr;
@@ -42,6 +53,7 @@ typedef struct main_memory{
 static main_memory* Memory;
 static mesi_bus*    Bus;
 static int requests[CACHE_COUNT] = {0}; 
+static int duration, so_far;
 
 
 int read(int alligned_address, cache* cache);

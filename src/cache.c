@@ -22,7 +22,7 @@ int read_word(int address, cache* cache){
         cache -> next_req -> cmd = BusRd;
         cache -> next_req -> addr = address;
         cache -> next_req -> data = 0;
-        generate_transaction(cache);
+        requests[cache->idx] = cache->next_req;
         return NULL;
     } else if (cache -> busy = 1){
         // do nothing, requrst is on mesi.
