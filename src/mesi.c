@@ -1,13 +1,23 @@
 #include "mesi.h"
 
 
-void generate_transaction(bus_request* request, int origin){
-    Bus->state = kick;
-    Bus->addr = request->addr;
-    Bus->cmd  = request->cmd;
-    Bus->data = request->data;
-    Bus->origin =  origin;
-    Bus->shared = is_shared(origin, request->addr);
+void generate_transaction(bus_request* request){
+    if (request){
+        Bus->state = start;
+        Bus->addr = request->addr;
+        Bus->cmd  = request->cmd;
+        Bus->data = request->data;
+        Bus->req_id = request ->id;
+        Bus->shared = is_shared(Bus->origin, request->addr);
+    } 
+    else {
+        Bus->state = start;
+        Bus->addr = 0;
+        Bus->cmd  = BusNOP;
+        Bus->data = 0;
+        Bus->req_id = 0;
+        Bus->shared = 0;
+    }
 }
 
 int is_shared(int requestor, int address){
@@ -22,32 +32,6 @@ int is_shared(int requestor, int address){
 }
 
 int nop(){ }
-
-
-void flush0(){
-    int alligned_address = alligned(Bus->addr);
-    Bus->resp->request = Bus->origin;
-    Bus->cmd = BusFlush;
-    Bus->addr = Bus->addr;
-    Bus->origin = Bus->resp->handler;
-    Bus->shared = is_shared(handler,Bus->addr);
-    if _cache_handled(handler){
-        Bus->data = CACHES[handler]->data[alligned_address]
-    } else {
-        Bus->data = Memory[alligned_address]
-    }
-    Bus->state = flush1;    
-
-}
-
-void flush_cont(int alligned_address, int step){
-    if _cache_handled(Bus->resp->handler){
-        Bus->data = CACHES[Bus->resp->handler]->data[alligned_address + step]
-        CACHES[Bus->resp->handler]->data[]
-    } else {
-        Bus->data = Memory[alligned_address + step]
-    }
-}
 
 // Invalidate all other caches instances of block
 int invalidate(int address, cache* invalidator){for (int i=0; i < CACHE_COUNT; i++){
@@ -88,7 +72,9 @@ void set_handler(int address){
 }
 
 // chose a request to handle from requests array
-int round_robin();
+int round_robin(){
+
+}
 
 // load a request to the mesi bus
 void load_request();            
@@ -120,9 +106,11 @@ void wait_for_response(){
 // response for the reqiest
 void flushing(){
     int word = Bus->resp->copyed;
-    Bus->state = flush;
-    Bus->origin = Bus->resp->handler;
-    Bus->cmd = BusFlush;
+    if (word == 0){
+        Bus->state = flush;
+        Bus->origin = Bus->resp->handler;
+        Bus->cmd = BusFlush;
+    }
     if (word < BLK_SIZE){
         if _cache_handled(Bus->resp->handler){
             Bus->data = CACHES[Bus->resp->handler]->data[_get_idx(Bus->addr)+word];
@@ -131,7 +119,7 @@ void flushing(){
         }
         Bus->resp->copyed ++;
     } else{
-        Bus->state = kick_mesi()
+        Bus->state = start;
     }
     
 }
@@ -139,18 +127,34 @@ void flushing(){
 //snoop the line
 void snoop(){}
 
+//update requests priority
+void pending_priority(){
+
+}
+
+//get longest request waiting
+void get_next_request(){
+    int pending_longest = -1, origin=-1;
+    for (int i=0; i<CACHE_COUNT; i++){
+        if (pending_time[i] > pending_longest){
+            pending_longest = pending_time[i];
+            origin = i;
+        }
+        pending_time[i] = inc_positive(pending_time[i]);
+    }
+    Bus->origin = origin;
+    return (req != -1) ? (pending_req[req]) : (NULL) 
+}
+
+
 
 int mesi_state_machine(){
     switch (Bus->state){
-        case idle:
-            // ??
-            break;
-        case start:
-            // add: load request()
-            kick_mesi();
+         case start:
+            generate_transaction(get_next_request());
             break;
         case memory_wait:
-            wait_for_response()
+            kick_mesi();
             break;
         case flush:
             flushing();
@@ -158,5 +162,7 @@ int mesi_state_machine(){
         default:
             break;
         }
-    }
+    
+    snoop();
 }
+

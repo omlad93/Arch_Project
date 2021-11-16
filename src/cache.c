@@ -24,7 +24,7 @@ int read_word(int address, cache* cache){
         cache -> next_req -> cmd = BusRd;       // Read request
         cache -> next_req -> addr = address;    // address which read is needed
         cache -> next_req -> data = 0;          // no data for read
-        requests[cache->idx] = cache->next_req; // load request to mesi pool
+        requests_queue[cache->idx] = cache->next_req; // load request to mesi pool
         return NULL;
     } else if (cache -> busy = 1){
         // do nothing, requrst is on mesi.

@@ -32,6 +32,7 @@
 #define flush 3
 
 #define _cache_handled(handler) (handler < 4)
+#define inc_positive(time) ((time >= 0) ? (time + 1) : time)
 
 typedef struct response{
     int handler;
@@ -46,6 +47,7 @@ typedef struct mesi_bus{
     int addr;           // address
     int data;           // data
     int shared;         // Shared state indicator
+    int req_id;         // request_id
     response* resp;     // used for flush
 } mesi_bus;
 
@@ -57,7 +59,11 @@ typedef struct main_memory{
 
 static main_memory* Memory;
 static mesi_bus*    Bus;
-static int requests[CACHE_COUNT] = {0}; 
+
+// round robin for requests
+static bus_request* pending_req[CACHE_COUNT] = {0}; 
+static int pending_time[CACHE_COUNT] = {-1, -1, -1, -1}
+
 static int waited_cycles;
 
 int generate_transaction(cache* requestor);
@@ -84,5 +90,19 @@ void load_request();
 // first step of the request life-cycle
 void kick_mesi();
 
+// it's pretty sraight forward
+void wait_for_response();
+
+// response for the reqiest
+void flushing();
+
+//snoop the line
+void snoop();
+
+//update requests priority
+void pending_priority();
+
+//get longest request waiting
+bus_request* get_next_request();
 
 #endif

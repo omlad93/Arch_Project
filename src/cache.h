@@ -17,13 +17,18 @@
 // #define OST_MASK 0x00000003 // 2 bits  (18 : 19)
 #define IDX_MASK 0x000000FF
 
-#define _get_tag(address)   (address & TAG_MASK) // get tag of address
-#define _get_block(address) (address & BLK_MASK) // get cachline from address
-#define _get_idx(address)   ( address & IDX_MASK  ) //
-#define alligned(address)   (address / BLK_SIZE) // get first address in the block
+#define TAG_SHFT 8
+#define BLK_SHFT 2
+
+//ADD SHIFTS!
+#define _get_tag(address)   ((address & TAG_MASK) >> TAG_SHFT)  // get tag of address
+#define _get_block(address) ((address & BLK_MASK) >> BLK_SFHT)  // get cachline from address
+#define _get_idx(address)   (address & IDX_MASK)                // get word idx in cache
+#define alligned(address)   (address / BLK_SIZE)                // get first address in the block
 
 
-static int idx =0; //static idx for cache id
+static int idx = 0; //static idx for cache id
+static int req_id = 0;
 static cache* CACHES[CACHE_COUNT]; // array of caches used by MESI
 
 
@@ -31,6 +36,7 @@ typedef struct bus_request{
     int cmd;                    // command type
     int addr;                   // requested address
     int data;                   // data
+    int id;
 } bus_request;
 
 typedef struct cahce{
