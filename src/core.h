@@ -50,31 +50,41 @@ typedef struct operation {
 	int rs; //rs register
 	int rt; //rt register
 
+	int dval; // value of rd @Decode
+	int sval; // value of rs @Decode
+	int tval; // value of rt @Decode
+
 	//int imm_used; // and indicator of using immediate
 
-	char* inst; // the opcode line from Imem
+	int inst; // the opcode line from Imem
 	int(*op_code)(struct operation* op, int pc); // a function pointer according to opcode
 } operation;
 
 
+typedef struct core {
+	int pc;						
+	int Op_Mem[1024];		    //Operation Memory aka IME
+	int Reg_File[16] = {0};
+	
+	operation *IF_op;           //Operation in Fetch 
+	operation *ID_op;           //Operation in Decode 
+	operation *EX_op;           //Operation in Execute 
+	operation *MEM_op;          //Operation in Memory
+	operation *WB_op;           //Operation in Write Back
+	
+	cache *Cache;               //Cache 
+
+} single_core;
+
 /*   SIMP REGISTERS    */
-int REG_FILE[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-pipeline_registers *IF_ID;
-pipeline_registers *ID_EX;
-pipeline_registers *EX_MEM;
-pipeline_registers *MEM_WB;
+// int REG_FILE[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+// pipeline_registers *IF_ID;
+// pipeline_registers *ID_EX;
+// pipeline_registers *EX_MEM;
+// pipeline_registers *MEM_WB;
 
 
-int pc;
-int* ack;
-//int  Data_Mem[4096];		//Data Memory aka DMEM
-int Op_Mem[1024];		    //Operation Memory aka IME
-cache *Cache;               //Cache 
-operation *IF_op;           //Operation in Fetch 
-operation *ID_op;           //Operation in Decode 
-operation *EX_op;           //Operation in Execute 
-operation *MEM_op;          //Operation in Memory
-operation *WB_op;           //Operation in Write Back
+
 
 /* **********************************************************/
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
@@ -141,7 +151,7 @@ int nop(operation*op, int pc);
 
 void IF_ex(char* line, operation* op, int pc);
 
-void ID_ex();
+void ID_ex(single_core* core);
 
 void EX_ex();
 
@@ -153,7 +163,7 @@ void start_clock_cycle();
 
 void end_clock_sycle();
 
-void fetch_op(operation* IF_op);
+void fetch_op(single_core core);
 
 void get_IF_ID_sprn(pipeline_registers* sprn);
 

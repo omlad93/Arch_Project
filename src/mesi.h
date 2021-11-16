@@ -22,43 +22,43 @@
 #define main  4
 
 // memory 
-#define mem_size 1048576 //  in words
-#define cycle_count 16
+#define mem_size 1048576        //  in words
+#define memory_latency 16
 
 // Bus states
-#define empty 0
-#define kick 1
-#define busy 2
-#define finish 3
+#define idle 0
+#define start 1
+#define memory_wait 2
+#define flush 3
 
+#define _cache_handled(handler) (handler < 4)
 
-#define _cache_handled(handler) (handler <4)
-
+typedef struct response{
+    int handler;
+    int requestor;
+    int copyed;
+} response;
 
 typedef struct mesi_bus{
-    int state;
-    int origin;
-    int cmd;
-    int addr;
-    int data;
-    int shared;
+    int state;          // for implemetation
+    int origin;         // the origin of transaction
+    int cmd;            // type of transaction
+    int addr;           // address
+    int data;           // data
+    int shared;         // Shared state indicator
+    response* resp;     // used for flush
 } mesi_bus;
 
 typedef struct main_memory{
     int data[mem_size];
-    int cycle;
+    int latency = memory_latency;
 } main_memory;
 
 
 static main_memory* Memory;
 static mesi_bus*    Bus;
 static int requests[CACHE_COUNT] = {0}; 
-static int duration, so_far;
-
-
-int read(int alligned_address, cache* cache);
-
-int read_ex(int alligned_address, cache* cache);
+static int waited_cycles;
 
 int generate_transaction(cache* requestor);
 
@@ -66,12 +66,23 @@ int nop();
 
 int flush(int alligned_address, cache* cache);
 
+// Invalidate all other caches instances of block
 int invalidate(int block, cache* invalidator);
 
-int read_mode(int address, cache* requestor);
+// return mode for BusRd (Shared / Exclusive)
+int BusRd_mode(int address, cache* requestor);
 
-int better_version_cached(int block);
+// determain the handler of the request: if (stored & modified) handler = cache.
+void set_handler(int address);
 
+// chose a request to handle from requests array
 int round_robin(mesi_bus* bus);
+
+// load a request to the mesi bus
+void load_request();
+
+// first step of the request life-cycle
+void kick_mesi();
+
 
 #endif

@@ -51,69 +51,68 @@ void IF_ex(char* line) {
 
 }
 
-void ID_ex(){
-
+void ID_ex(single_core* core){
     switch (ID_op->code) {
 	case(ADD):
-		ID_op->op_code = &add;
+		core -> ID_op -> op_code = &add;
         return;
 	case(SUB):
-		ID_op->op_code =  &sub;
+		core -> ID_op -> op_code =  &sub;
         return;
 	case(AND):
-		ID_op->op_code = &and;
+		core -> ID_op -> op_code = &and;
         return;
 	case(OR):
-		ID_op->op_code = &or;
+		core -> ID_op -> op_code = &or;
         return;
 	case(XOR):
-		ID_op->op_code = &xor;
+		core -> ID_op -> op_code = &xor;
         return;
 	case(MUL):
-		ID_op->op_code = &mul;
+		core -> ID_op -> op_code = &mul;
         return;
 	case(SLL):
-		ID_op->op_code = &sll;
+		core -> ID_op -> op_code = &sll;
         return;
 	case(SRA):
-		ID_op->op_code = &sra;
+		core -> ID_op -> op_code = &sra;
         return;
 	case(SRL):
-		ID_op->op_code = &srl;
+		core -> ID_op -> op_code = &srl;
         return;
 	case(BEQ):
-		ID_op->op_code = &beq;
+		core -> ID_op -> op_code = &beq;
         return;
 	case(BNE):
-		ID_op->op_code = &bne;
+		core -> ID_op -> op_code = &bne;
         return;
 	case(BLT):
-		ID_op->op_code = &blt;
+		core -> ID_op -> op_code = &blt;
         return;
 	case(BJT):
-		ID_op->op_code = &bgt;
+		core -> ID_op -> op_code = &bgt;
         return;
 	case(BLE):
-		ID_op->op_code = &ble;
+		core -> ID_op -> op_code = &ble;
         return;
 	case(BGE):
-		ID_op->op_code = &bge;
+		core -> ID_op -> op_code = &bge;
         return;
 	case(JAL):
-		ID_op->op_code = &jal;
+		core -> ID_op -> op_code = &jal;
         return;
 	case(LW):
-		ID_op->op_code = &lw;
+		core -> ID_op -> op_code = &lw;
         return;
 	case(SW):
-		ID_op->op_code = &sw;
+		core -> ID_op -> op_code = &sw;
         return;
 	case(HALT):
-		ID_op->op_code = &halt;
+		core -> ID_op -> op_code = &halt;
         return;
 	//if unknown opcode -> do nop
 	default:
-		ID_op->op_code = &nop;
+		core -> ID_op -> op_code = &nop;
         return;
 	}
 
