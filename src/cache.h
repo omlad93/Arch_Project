@@ -10,6 +10,7 @@
 #define WORDS 256
 #define BLOCKS 64
 #define BLK_SIZE 4
+#define LAST_CPY 3 // BLK_SIZE - 1
 
 //#define MEM_MASK 0x000FFFFF // 20 bits mask
 #define TAG_MASK 0x000FFF00 // 12 bits ( 0 : 11) 
@@ -74,3 +75,4 @@ int read_word(int address, cache* cache);
 
 // write data to cache. if MISS, fetched it throug messi and stall
 int write_word(int address, int data, cache* cache);
+

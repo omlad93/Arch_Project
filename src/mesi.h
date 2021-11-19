@@ -31,13 +31,20 @@
 #define memory_wait 2
 #define flush 3
 
+static int cycle = 0 ;
+
 #define _cache_handled(handler) (handler < 4)
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
+#define _cache_on_bus(idx) (last_time_served[idx] = cycle)
+#define clear_request_from_cahce(c) (pending_req[c] = NULL; _cache_on_bus(c))
+#define time_diff(time_a, time_b) (time_a - time_b)
+
 
 typedef struct response{
     int handler;
     int requestor;
     int copyed;
+    int cmd;
 } response;
 
 typedef struct mesi_bus{
@@ -61,19 +68,15 @@ static main_memory* Memory;
 static mesi_bus*    Bus;
 
 // round robin for requests
-static bus_request* pending_req[CACHE_COUNT] = {0}; 
-static int pending_time[CACHE_COUNT] = {-1, -1, -1, -1}
+static bus_request* pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; 
+static int last_time_served[CACHE_COUNT] = {0};
 
-static int waited_cycles;
+
+static int waited_cycles; // counter when accessing main memory;
 
 int generate_transaction(cache* requestor);
 
-int nop();
-
-int flush(int alligned_address, cache* cache);
-
-// Invalidate all other caches instances of block
-int invalidate(int block, cache* invalidator);
+int is_shared(int requestor, int address);
 
 // return mode for BusRd (Shared / Exclusive)
 int BusRd_mode(int address, cache* requestor);
@@ -96,13 +99,27 @@ void wait_for_response();
 // response for the reqiest
 void flushing();
 
+// go over caches, and invalidate the data if needed
+void invalidate_caches(int client, int block_idx);
+
+// go over caches, and invalidate the data if needed
+void invalidate_caches(int client, int provider, int block_idx);
+
+// perform memory copy on flush when request was Rd
+void snoop_Rd(int handler, int client);
+
+// perform memory copy on flush when request was RdX
+void snoop_RdX(int handler, int client);
+
 //snoop the line
 void snoop();
 
-//update requests priority
-void pending_priority();
+// get the next core to serve
+int next_core_to_serve();
 
-//get longest request waiting
+//get the next request
 bus_request* get_next_request();
 
+// manage transaction over messi using state machine
+int mesi_state_machine();
 #endif

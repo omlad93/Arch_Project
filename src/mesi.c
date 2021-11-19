@@ -1,6 +1,6 @@
 #include "mesi.h"
 
-
+// looad a transaction on the bus (request)
 void generate_transaction(bus_request* request){
     if (request){
         Bus->state = start;
@@ -9,6 +9,8 @@ void generate_transaction(bus_request* request){
         Bus->data = request->data;
         Bus->req_id = request ->id;
         Bus->shared = is_shared(Bus->origin, request->addr);
+        _cache_on_bus(Bus->origin)
+        clear_request_from_cahce(Bus->resp->requestor);
     } 
     else {
         Bus->state = start;
@@ -20,26 +22,15 @@ void generate_transaction(bus_request* request){
     }
 }
 
+// check if data is also cached in other caches
 int is_shared(int requestor, int address){
     for (int i=0; i< CACHE_COUNT; i++){
-        if (i != requestor){
-            if query(CACHES[i], address, BusRd){
-                return 1;
-            }
+        if (i != requestor) && query(CACHES[i], address, BusRd) {
+            return 1;
         }
     }
     return 0;
 }
-
-int nop(){ }
-
-// Invalidate all other caches instances of block
-int invalidate(int address, cache* invalidator){for (int i=0; i < CACHE_COUNT; i++){
-    int block = _get_block(address);
-    if (i != invalidator->idx && query(alligned(address), BusRd)){
-        CACHES[i]-> mesi_state[block] = Invalid;
-    }
-    }}
 
 // return mode for BusRd (Shared / Exclusive)
 int BusRd_mode(int address, cache* requestor){
@@ -79,9 +70,8 @@ int round_robin(){
 // load a request to the mesi bus
 void load_request();            
 
-// first step of the request life-cycle
+// call when a request is loaded on the bus
 void kick_mesi(){
-
     set_handler(Bus->addr);
     if _cache_handled(Bus->resp->handler){
         // next cycle will be finish
@@ -93,7 +83,7 @@ void kick_mesi(){
     }
 }
 
-// it's pretty sraight forward
+// no one uses the bus if waiting for memory
 void wait_for_response(){
     if (waited_cycles < Memory->latency){
         waited_cycles++;
@@ -103,7 +93,7 @@ void wait_for_response(){
     }
 }
 
-// response for the reqiest
+// transfer request over the line
 void flushing(){
     int word = Bus->resp->copyed;
     if (word == 0){
@@ -114,6 +104,7 @@ void flushing(){
     if (word < BLK_SIZE){
         if _cache_handled(Bus->resp->handler){
             Bus->data = CACHES[Bus->resp->handler]->data[_get_idx(Bus->addr)+word];
+            _cache_on_bus(Bus->resp->handler);
         } else {
             Bus->data = Memory->data[Bus->addr + word];
         }
@@ -124,45 +115,130 @@ void flushing(){
     
 }
 
-//snoop the line
-void snoop(){}
-
-//update requests priority
-void pending_priority(){
-
-}
-
-//get longest request waiting
-void get_next_request(){
-    int pending_longest = -1, origin=-1;
-    for (int i=0; i<CACHE_COUNT; i++){
-        if (pending_time[i] > pending_longest){
-            pending_longest = pending_time[i];
-            origin = i;
+// go over caches, and invalidate the data if needed
+void invalidate_caches(int client, int block_idx){
+    for (int j=0; j<3; j++){
+        if ((j != client) && query(Bus->addr,CACHES[j],BusRd)){
+            cache = CACHES[j];
+            cache->mesi_state[block_idx] = Invalid;
         }
-        pending_time[i] = inc_positive(pending_time[i]);
     }
-    Bus->origin = origin;
-    return (req != -1) ? (pending_req[req]) : (NULL) 
+}
+// go over caches, and invalidate the data if needed
+void invalidate_caches(int client, int provider, int block_idx){
+    for (int j=0; j<3; j++){
+        if ((j != client) && (j != provider) && query(Bus->addr,CACHES[j],BusRd)){
+            cache = CACHES[j];
+            cache->mesi_state[block_idx] = Invalid;
+        }
+    }
 }
 
+// perform memory copy on flush when request was Rd
+void snoop_Rd(handler, client){
+    int shared;
+    if _cache_handled(handler){
+        // copy data fro mmemory to requesting cache
+        CACHES[client]->data[_get_idx(Bus->Addr)] = Memory->data[Bus->addr];
+    } else { 
+        // copy data from handler cache to memory and to cache.
+        Memory->data[Bus->addr] = CACHES[handler]->data[_get_idx(Bus->Addr)] // copy data
+        CACHES[client]->data[_get_idx(Bus->Addr)] = CACHES[handler]->data[_get_idx(Bus->Addr)]   
+    }
+    if (Bus->resp->copyed == LAST_CPY){
+        // make data valid in client and invalid in handler
+        shared = (Bus->shared) ||  _cache_handled(handler);
+        CACHES[client]->mesi_state[_get_block(Bus->addr)] = shared ? Shared : Exclusive;
+        CACHES[client]->tags[_get_block(Bus->addr)] = _get_tag(Bus->Addr);
+         if ( _cache_handled(handler)) {CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Shared;}
+    }
+}
 
+// perform memory copy on flush when request was RdX
+void snoop_RdX(handler, client){
+    if _cache_handled(handler){
+        // invalidate other caches (wait with handler cache)
+        // copy data fro mmemory to requesting cache
+        invalidate_caches(client, handler, _get_block(Bus->addr));
+        Memory->data[Bus->addr] = CACHES[handler]->data[_get_idx(Bus->Addr)]; // copy data
+        CACHES[client]->data[_get_idx(Bus->Addr)] = CACHES[handler]->data[_get_idx(Bus->Addr)];
+        
+    } else { 
+        // invalidate other caches
+        // copy data from handler cache to memory and to cache.
+        invalidate_caches(client, _get_block(Bus->addr));
+        CACHES[client]->data[_get_idx(Bus->Addr)] = Memory->data[Bus->addr];  
+    }
+    if (Bus->resp->copyed == LAST_CPY){
+        // make data valid in client and invalid in handler
+        CACHES[client]->mesi_state[_get_block(Bus->addr)] = Exclusive;
+        CACHES[client]->tags[_get_block(Bus->addr)] = _get_tag(Bus->Addr);
+        if ( _cache_handled(handler)) {CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Invalid;}
+    }
+}
 
-int mesi_state_machine(){
+//snoop the line on flush: modify memory elements
+void snoop(){
+    // cache* requestor = CACHES[Bus->resp->requestor]
+    int client = Bus->resp->requestor;
+    int handler = Bus->resp->handler;
+    switch (Bus->resp->cmd){
+        case BusRd:
+            snoop_Rd(handler,client);
+            return;
+        case BusRdX:
+            snoop_RdX(handler,client);
+            return;
+        default:
+            // function is called upon flush op, causing the change to be inside requeting cache
+            // no possible to have a flush over flush or flush over nop.
+            return
+    }
+
+}
+
+// get the next core to serve
+int next_core_to_serve(){
+    int most_neglected = -1, max_neglect_time = -1;
+    int current_neglect, update;
+    for (int j=0; j<CACHE_COUNT;j++){
+        if (pending_req[j] != NULL){
+            current_neglect =  time_diff(cycle,last_time_served[j];
+            update = (max_neglect_time < current_neglect);
+            most_neglected = (update) ? j : most_neglected;
+            max_neglect_time = max(max_neglect_time, current_neglect);
+        }
+    }
+    return most_neglected;
+}
+
+// get longest request waiting
+bus_request* get_next_request(){
+    int pending_longest = -1;
+    int origin = next_core_to_serve();
+    Bus->origin = origin;
+    Bus->resp->requestor =  origin;
+    Bus->resp->cmd = (origin >= 0) ? pending_req[origin]->cmd;
+    return (origin >= 0) ? (pending_req[origin]) : (NULL) 
+}
+
+// manage transaction over messi using state machine
+int mesi_state_machine(){   
     switch (Bus->state){
          case start:
-            generate_transaction(get_next_request());
+            generate_transaction(get_next_request()); // load transaction on the bus
+            kick_mesi(); //move state machine according to transaction
             break;
         case memory_wait:
-            kick_mesi();
+            wait_for_response(); // do nothing untill response is ready
             break;
         case flush:
             flushing();
+            snoop();
             break;
         default:
             break;
         }
-    
-    snoop();
+    cycle++;
 }
 
