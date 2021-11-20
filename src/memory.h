@@ -49,7 +49,7 @@
 #define core1 1
 #define core2 2
 #define core3 3 
-#define main  4
+#define main_mem  4
 
 // memory 
 #define mem_size 1048576        //  in words
@@ -61,14 +61,12 @@
 #define memory_wait 2
 #define flush 3
 
-static int cycle = 0 ;
-
+// macros mesi behaviour
 #define _cache_handled(handler) (handler < 4)
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
 #define _cache_on_bus(idx) (last_time_served[idx] = cycle)
 #define time_diff(time_a, time_b) (time_a - time_b)
-
-// ************************** Structures *************************** \\
+/* ************************** Structures *************************** */
 
 typedef struct bus_request{
     int cmd;                    // command type
@@ -116,7 +114,9 @@ typedef main_memory* main_memory_p;
 
 
 
-// *********************** static variables ************************ \\
+/* *********************** static variables ************************ */
+
+static int cycle = 0 ;
 
 static int idx = 0;                 //static idx for cache id
 static int request_id = 0;          // each request will have unique id
@@ -132,7 +132,7 @@ static int waited_cycles;                                                 // cou
  
 
 
-// ******************* cache functions headers ******************** \\
+/* ******************* cache functions headers ******************** */
 
 // call when on an instace upon creation.
 void init_cache(cache_p cache);
@@ -147,13 +147,13 @@ int read_word(int address, cache_p cache, int* dest_reg);
 int write_word(int address, cache_p cache, int* src_reg);
 
 
-// ******************* MESI functions headers ******************** \\
+/* ******************* MESI functions headers ******************** */
 
 // call upon loding request on the bus
 void clear_request_from_cahce(int c);
 
 // looad a transaction on the bus (request)
-void generate_transaction(cache_p requestor);
+void generate_transaction(bus_request_p request);
 
 int is_shared(int requestor, int address);
 

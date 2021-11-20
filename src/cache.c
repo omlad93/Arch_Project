@@ -74,7 +74,11 @@ int write_word(int address, cache_p cache, int* src_reg){
         // do nothing, requrst is on mesi.
         return MISS;
     }
-    return 0;
+
 
 }
 
+
+int main(int argc, char* argv[]){
+    printf("\n\t > Main Function Of %s\n\n", argv[0]);
+}

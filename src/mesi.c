@@ -15,7 +15,7 @@ void generate_transaction(bus_request_p request){
         Bus->data = request->data;
         Bus->req_id = request ->id;
         Bus->shared = is_shared(Bus->origin, request->addr);
-        _cache_on_bus(Bus->origin)
+        _cache_on_bus(Bus->origin);
         clear_request_from_cahce(Bus->resp->requestor);
     } 
     else {
@@ -30,8 +30,11 @@ void generate_transaction(bus_request_p request){
 
 // check if data is also cached in other caches
 int is_shared(int requestor, int address){
+    int stored, need_to_check;
     for (int i=0; i< CACHE_COUNT; i++){
-        if (i != requestor) && query(address, CACHES[i], BusRd) {
+        need_to_check = i != requestor;
+        stored = query(address, CACHES[i], BusRd);
+        if (need_to_check && stored)  {
             return 1;
         }
     }
@@ -68,7 +71,7 @@ void set_handler(int address){
             return;
          }
     }
-    Bus->resp->handler = main;
+    Bus->resp->handler = main_mem;
 }
 
 // chose a request to handle from requests array
@@ -206,8 +209,9 @@ int next_core_to_serve(){
         if (pending_req[j] != NULL){
             current_neglect =  time_diff(cycle,last_time_served[j]);
             update = (max_neglect_time < current_neglect);
+
             most_neglected = (update) ? j : most_neglected;
-            max_neglect_time = max(max_neglect_time, current_neglect);
+            max_neglect_time = (update) ? current_neglect: max_neglect_time;
         }
     }
     return most_neglected;
