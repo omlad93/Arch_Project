@@ -1,4 +1,4 @@
-#include "cache.h"
+#include "memory.h"git add
 
 
 /*
@@ -27,17 +27,19 @@
 /*
  * Parsing instraction macros - #FIXME
  */
-#define OPP_SHFT 0x19
-#define RD_SHFT 0x16
-#define RS_SHFT 0x13
-#define RT_SHFT 0x10
-#define OPP_MASK 0x3E000000 //bits 29-25
-#define RD_MASK 0x01c00000 //bits 24-22
-#define RS_MASK 0x00380000 //bits 21-19
-#define RT_MASK 0x00070000 //bits 18-16
+#define OPP_SHFT 0x18 //24 bits
+#define RD_SHFT 0x14 //20 bits
+#define RS_SHFT 0x10 //16 bits
+#define RT_SHFT 0xc //12 bits
+#define OPP_MASK 0xFF000000 //bits 31:24
+#define RD_MASK 0x00F00000 //bits 20-23
+#define RS_MASK 0x000F0000 //bits 16-19
+#define RT_MASK 0x0000F000 //bits 15-12
+#define IMM_MASK 0x00000FFF //bits 11-0
 
 #define SRL_MASK 0x7FFFFFFF
 #define LSB_9BIT 0x000001FF
+#define MEM_SIZE 1024
 
 typedef struct registers_s {
 	// 8 bit opcode
@@ -68,6 +70,10 @@ typedef struct operation {
 	int rs_val; // value of rs @Decode
 	int rt_val; // value of rt @Decode
 
+	int addr; // used in memory instructions
+
+	int op_pc;
+
 	//int imm_used; // and indicator of using immediate
 
 	int inst; // the opcode line from Imem
@@ -76,9 +82,10 @@ typedef struct operation {
 
 
 typedef struct core {
+	FILE* trace_file;
 	int pc;						
-	int Op_Mem[1024];		    //Operation Memory aka IME
-	int Reg_File[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	int Op_Mem[MEM_SIZE];		//Operation Memory aka IMEM
+	int Reg_File[16];
 	
 	operation *IF_op;           //Operation in Fetch 
 	operation *ID_op;           //Operation in Decode 
@@ -104,64 +111,40 @@ typedef struct core {
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
 /* **********************************************************/
 //1
-int add(single_core* core);
+void add(single_core* core);
 
 //2
-int sub(single_core* core);
+void sub(single_core* core);
 
 //3
-int and(single_core* core);
+void and(single_core* core);
 
 //4
-int or (single_core* core);
+void or (single_core* core);
 
 //5
-int xor (single_core* core);
+void xor (single_core* core);
 
 //6
-int mul(single_core* core);
+void mul(single_core* core);
 
 //6
-int sll(single_core* core);
+void sll(single_core* core);
 
 //7
-int sra(single_core* core);
+void sra(single_core* core);
 
 //8
-int srl(single_core* core);
-
-//9
-int beq(single_core* core);
-
-//10
-int bne(single_core* core);
-
-//11
-int blt(single_core* core);
-
-//12
-int bgt(single_core* core);
-
-//13
-int ble(single_core* core);
-
-//14
-int bge(single_core* core);
-
-//15
-int jal(single_core* core);
+void srl(single_core* core);
 
 //16
-int lw(single_core* core);
+void lw(single_core* core);
 
 //17
-int sw(single_core* core);
-
-//21
-int halt(single_core* core);
+void sw(single_core* core);
 
 //assign to $0 or unreconized behivour 
-int nop(single_core* core);
+void nop(single_core* core);
 
 /* **********************************************************/
 /*  ~~~~~~~~~~   Single core execution functions ~~~~~~~~~  */
@@ -171,17 +154,17 @@ void IF_ex(single_core* core);
 
 //void fetch_op(single_core* core);
 
-void ID_ex(single_core* core);
+int ID_ex(single_core* core);
 
 void EX_ex(single_core* core);
 
-void MEM_ex(single_core* core);
+int MEM_ex(single_core* core);
 
 void WB_ex(single_core* core);
 
-void simulate_clock_cycle(single_core* core);
+void simulate_clock_cycle(single_core* core, int clock_cycle);
 
-void start_clock_cycle(single_core* core);
+//void start_clock_cycle(single_core* core);
 
 void end_clock_sycle(single_core* core);
 
@@ -189,9 +172,11 @@ void init_core(FILE* imem, single_core* core);
 
 void read_imem(FILE* imem, single_core* core);
 
+void print_trace(single_core* core, int clock_cycle);
+
 //void get_IF_ID_sprn(pipeline_registers* sprn);
 
-void core_exec(single_core* core);
+//void core_exec(single_core* core);
 
 
 
