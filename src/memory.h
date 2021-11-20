@@ -118,13 +118,12 @@ typedef main_memory* main_memory_p;
 
 static int cycle = 0 ;
 
-static int idx = 0;                 //static idx for cache id
+static int cache_idx = 0;                 //static idx for cache id
 static int request_id = 0;          // each request will have unique id
 static cache_p CACHES[CACHE_COUNT]; // array of caches used by MESI
 
-static main_memory_p Memory;        // main memmory
-// Memory->latency = memory_latency;   // specify latency
-static mesi_bus_p    Bus;           // the main mesi bus
+static main_memory_p Memory = NULL;         // main memmory
+static mesi_bus_p Bus = NULL;           // the main mesi bus
 
 static bus_request_p pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending requests
 static int last_time_served[CACHE_COUNT] = {0};                           // array for use of round robin
@@ -163,9 +162,6 @@ int BusRd_mode(int address, cache_p requestor);
 // determain the handler of the request: if (stored & modified) handler = cache.
 void set_handler(int address);
 
-// chose a request to handle from requests array
-int round_robin();
-
 // load a request to the mesi bus
 void load_request();
 
@@ -197,7 +193,25 @@ int next_core_to_serve();
 bus_request_p get_next_request();
 
 // manage transaction over messi using state machine
-int mesi_state_machine();
+void mesi_state_machine();
+
+
+/* ******************* Debugging functions headers ******************** */
+/*  
+    Providing a no-coherncy cach system
+    to check cache behaviour without mesi
+*/
+
+int non_mesi_query(int address, cache_p cache);
+
+int non_mesi_read(int address, cache_p cache, int* dest_reg);
+
+int non_mesi_write(int address, cache_p cache, int* src_reg);
+
+void fetch_block_immediate(int address, cache_p cache);
+
+void load_mem_manually();
+
 
 
 #endif

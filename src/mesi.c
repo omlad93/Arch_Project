@@ -74,11 +74,6 @@ void set_handler(int address){
     Bus->resp->handler = main_mem;
 }
 
-// chose a request to handle from requests array
-int round_robin(){
-
-}
-
 // load a request to the mesi bus
 void load_request();            
 
@@ -211,7 +206,7 @@ int next_core_to_serve(){
             update = (max_neglect_time < current_neglect);
 
             most_neglected = (update) ? j : most_neglected;
-            max_neglect_time = (update) ? current_neglect: max_neglect_time;
+            max_neglect_time = (update) ? current_neglect: max_neglect_time ;
         }
     }
     return most_neglected;
@@ -219,7 +214,6 @@ int next_core_to_serve(){
 
 // get longest request waiting
 bus_request_p get_next_request(){
-    int pending_longest = -1;
     int origin = next_core_to_serve();
     Bus->origin = origin;
     Bus->resp->requestor =  origin;
@@ -228,7 +222,7 @@ bus_request_p get_next_request(){
 }
 
 // manage transaction over messi using state machine
-int mesi_state_machine(){   
+void mesi_state_machine(){   
     switch (Bus->state){
          case start:
             generate_transaction(get_next_request()); // load transaction on the bus
