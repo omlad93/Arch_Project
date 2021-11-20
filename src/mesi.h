@@ -1,6 +1,7 @@
 #ifndef MESI_H
 #define MESI_H
 #include "cache.h"
+#include <stdlib.h>
 
 // mesi states
 #define Invalid   0
@@ -36,8 +37,9 @@ static int cycle = 0 ;
 #define _cache_handled(handler) (handler < 4)
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
 #define _cache_on_bus(idx) (last_time_served[idx] = cycle)
-#define clear_request_from_cahce(c) (pending_req[c] = NULL; _cache_on_bus(c))
 #define time_diff(time_a, time_b) (time_a - time_b)
+
+// ************************** Structures *************************** \\
 
 
 typedef struct response{
@@ -57,29 +59,40 @@ typedef struct mesi_bus{
     int req_id;         // request_id
     response* resp;     // used for flush
 } mesi_bus;
+typedef mesi_bus* mesi_bus_p;
 
 typedef struct main_memory{
     int data[mem_size];
-    int latency = memory_latency;
+    int latency;
 } main_memory;
+typedef main_memory* main_memory_p;
 
 
-static main_memory* Memory;
-static mesi_bus*    Bus;
 
-// round robin for requests
-static bus_request* pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; 
+
+// *********************** static variables ************************ \\
+
+static main_memory_p Memory;
+Memory->latency = memory_latency;
+static mesi_bus_p    Bus;
+
+static bus_request_p pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; 
 static int last_time_served[CACHE_COUNT] = {0};
-
-
 static int waited_cycles; // counter when accessing main memory;
+ 
 
-int generate_transaction(cache* requestor);
+// ********************** functions  headers *********************** \\
+
+// call upon loding request on the bus
+void clear_request_from_cahce(int c);
+
+// looad a transaction on the bus (request)
+void generate_transaction(cache_p requestor);
 
 int is_shared(int requestor, int address);
 
 // return mode for BusRd (Shared / Exclusive)
-int BusRd_mode(int address, cache* requestor);
+int BusRd_mode(int address, cache_p requestor);
 
 // determain the handler of the request: if (stored & modified) handler = cache.
 void set_handler(int address);
@@ -99,10 +112,7 @@ void wait_for_response();
 // response for the reqiest
 void flushing();
 
-// go over caches, and invalidate the data if needed
-void invalidate_caches(int client, int block_idx);
-
-// go over caches, and invalidate the data if needed
+// go over caches, and invalidate the data if needed, skip given caches
 void invalidate_caches(int client, int provider, int block_idx);
 
 // perform memory copy on flush when request was Rd
@@ -118,8 +128,10 @@ void snoop();
 int next_core_to_serve();
 
 //get the next request
-bus_request* get_next_request();
+bus_request_p get_next_request();
 
 // manage transaction over messi using state machine
 int mesi_state_machine();
+
+
 #endif

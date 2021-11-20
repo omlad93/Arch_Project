@@ -1,3 +1,5 @@
+#ifndef CACHE_H
+#define CACHE_H
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,14 +25,9 @@
 
 //ADD SHIFTS!
 #define _get_tag(address)   ((address & TAG_MASK) >> TAG_SHFT)  // get tag of address
-#define _get_block(address) ((address & BLK_MASK) >> BLK_SFHT)  // get cachline from address
+#define _get_block(address) ((address & BLK_MASK) >> BLK_SHFT)  // get cachline from address
 #define _get_idx(address)   (address & IDX_MASK)                // get word idx in cache
 #define alligned(address)   (address / BLK_SIZE)                // get first address in the block
-
-
-static int idx = 0; //static idx for cache id
-static int req_id = 0;
-static cache* CACHES[CACHE_COUNT]; // array of caches used by MESI
 
 
 typedef struct bus_request{
@@ -39,23 +36,33 @@ typedef struct bus_request{
     int data;                   // data
     int id;
 } bus_request;
+typedef bus_request* bus_request_p; 
 
-typedef struct cahce{
+typedef struct cache{
     int cache_data[WORDS];      // the actual data stored by cachelines (word)
     int tags[BLOCKS];           // the tags of the stored blocks 
     int mesi_state[BLOCKS];     // the mesi status of the stored blocks
     int idx;                    // serial id of cache instance
     int busy;                   // a flag used by cache to indicate that the cache request is being processed.
     bus_request* next_req;      // store the request that will be send on MESI BUS
-} cache;
+} cache ;
+typedef cache* cache_p;
+
+
+
+static int idx = 0; //static idx for cache id
+static int request_id = 0;
+static cache_p CACHES[CACHE_COUNT]; // array of caches used by MESI
+
 
 // call when on an instace upon creation.
-void init_cache(cache* cache){
+void init_cache(cache_p cache){
     cache->idx = idx;       // create unique idx
     CACHES[idx] = cache;    // add to array
     idx++;                  // inc idx
     cache-> busy = 0;
 
+    cache->next_req = NULL;
     for (int i=0; i<WORDS; i++){    /// zero all data
         cache->cache_data[i] = 0;
         if (i < BLOCKS){
@@ -64,15 +71,17 @@ void init_cache(cache* cache){
         }
     }
 
-    cache ->next_req = {0};
+
 }
 
 // check if address is cached, return HIT or MISS
-int query(int address, cache* cache);
+int query(int address, cache_p cache, int mode);
 
-// read word from cache. if MISS, fetch it using messi and stall
-int read_word(int address, cache* cache);
+// read word from cache to value in *dest_reg. if MISS, fetch it using messi and stall
+int read_word(int address, cache_p cache, int* dest_reg);
 
 // write data to cache. if MISS, fetched it throug messi and stall
-int write_word(int address, int data, cache* cache);
+int write_word(int address, cache_p cache, int* src_reg);
 
+
+#endif
