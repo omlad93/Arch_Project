@@ -26,10 +26,10 @@
 #define BLK_SHFT 2
 
 // macros for indexing
-#define _get_tag(address)   ((address & TAG_MASK) >> TAG_SHFT)  // get tag of address
-#define _get_block(address) ((address & BLK_MASK) >> BLK_SHFT)  // get cachline from address
-#define _get_idx(address)   (address & IDX_MASK)                // get word idx in cache
-#define alligned(address)   (address / BLK_SIZE)                // get first address in the block
+#define _get_tag(address)   ((((unsigned int)address) & TAG_MASK) >> TAG_SHFT)  // get tag of address
+#define _get_block(address) ((((unsigned int)address) & BLK_MASK) >> BLK_SHFT)  // get cachline from address
+#define _get_idx(address)   (((unsigned int)address) & IDX_MASK)                // get word idx in cache
+#define alligned(address)   (((unsigned int)address) - (((unsigned int)address) % BLK_SIZE))    // get first address in the block
 
 
 // mesi states
