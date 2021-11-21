@@ -214,6 +214,7 @@ int next_core_to_serve(){
 
 // get longest request waiting
 bus_request_p get_next_request(){
+
     int origin = next_core_to_serve();
     Bus->origin = origin;
     Bus->resp->requestor =  origin;
@@ -222,21 +223,30 @@ bus_request_p get_next_request(){
 }
 
 // manage transaction over messi using state machine
-void mesi_state_machine(){   
+void mesi_state_machine(){
+    char* states[3] = {"start", "memory_wait", "flush"};
+    int state = Bus->state;
+    // print_bus(); 
+    printf("\n\t $ MSM: %s", states[state]);
     switch (Bus->state){
          case start:
-            generate_transaction(get_next_request()); // load transaction on the bus
-            kick_mesi(); //move state machine according to transaction
+            printf("\n\t  > MSM: Start");
+            // exit(0);
+            // generate_transaction(get_next_request()); // load transaction on the bus
+            // kick_mesi(); //move state machine according to transaction
             break;
         case memory_wait:
-            wait_for_response(); // do nothing untill response is ready
+            printf("\n\t MSM: Mwait");
+            // wait_for_response(); // do nothing untill response is ready
             break;
         case flush:
-            flushing();
-            snoop();
+            printf("\n\t MSM: Flush");
+            // flushing();
+            // snoop();
             break;
         default:
-            break;
+            printf("OOPS!");
+            exit(1);
         }
     cycle++;
 }
