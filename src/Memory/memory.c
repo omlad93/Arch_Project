@@ -47,10 +47,9 @@ int read_word(int address, cache_p cache, int* dest_reg){
         cache -> next_req -> data = 0;          // no data for read
         cache -> next_req -> id = request_id++;
         pending_req[cache->idx] = cache->next_req; // load request to mesi pool
-        printf("\n\t > queued request %.5x\n", cache->next_req->id);
+        // printf("\n\t > queued request %.5x\n", cache->next_req->id);
         return MISS;
     }
-    printf("\n\t\t > polled request %.5x\n", cache->next_req->id);
     return MISS;
     
 }
@@ -71,6 +70,7 @@ int write_word(int address, cache_p cache, int* src_reg){
         cache -> next_req -> data = data;
         cache -> next_req -> id = request_id++;
         pending_req[cache->idx] = cache->next_req; // load request to mesi pool
+        // printf("\n\t > queued request %.5x\n", cache->next_req->id);
         return  MISS;
     } 
     return MISS;
@@ -81,7 +81,6 @@ int write_word(int address, cache_p cache, int* src_reg){
 /* ************************ Utility Functios  ************************* */
 
 void load_mem_manually(){
-    Memory = calloc(1, sizeof(main_memory));
     for (int word=0; word<mem_size; word++){
         Memory->data[word] = word;
     }
@@ -163,6 +162,22 @@ void fetch_block_immediate(int alligned_address, cache_p cache){
 
 }
 
+void initiate_memory_system(){
+    Memory = calloc(1, sizeof(main_memory));
+    Bus = calloc(1,sizeof(mesi_bus));
+    Bus->resp = calloc(1,sizeof(response));
+
+}
+
+void close_memory_system(){
+    free(Memory);
+    free(Bus->resp);
+    free(Bus);
+    for (int c=0; c<CACHE_COUNT; c++){
+        free(CACHES[c]->next_req);
+        free(CACHES[c]);
+    }
+}
 
 /* *********************** MESI bus Functios  ************************ */
 
@@ -421,6 +436,8 @@ void mesi_state_machine(){
 }
 
 
+
+
 /* ***************** Main Function - inner debug  ****************** */
 
 
@@ -436,8 +453,7 @@ int main(int argc, char* argv[]){
     cache_p c3 = calloc(1,sizeof(cache)); init_cache(c3);
     
     
-    Bus = calloc(1,sizeof(mesi_bus)); Bus->resp = calloc(1,sizeof(response));
-    // print_bus();
+    initiate_memory_system();
 
     printf("\n\tCache Debug Main Function: %s\n", argv[argc-1]);
 
@@ -467,7 +483,7 @@ int main(int argc, char* argv[]){
     print_cache(cache_2,c2); print_cache(cache_3,c3);
 
     fclose(cache_0); fclose(cache_1); fclose(cache_2); fclose(cache_3);
-    free(Memory);
+    close_memory_system();
 
     printf("\t Finished [V]");
 }
