@@ -65,6 +65,9 @@
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
 #define _cache_on_bus(idx) (last_time_served[idx] = cycle)
 #define time_diff(time_a, time_b) (time_a - time_b)
+#define is_hit(st) (st == HIT)
+#define is_miss(st) (st == MISS)
+
 /* ************************** Structures *************************** */
 
 typedef struct bus_request{
@@ -115,7 +118,7 @@ typedef main_memory* main_memory_p;
 
 /* *********************** static variables ************************ */
 
-static int cycle = 0 ;
+static int cycle = 1 ;
 
 static int cache_idx = 0;                 //static idx for cache id
 static int request_id = 0;          // each request will have unique id
