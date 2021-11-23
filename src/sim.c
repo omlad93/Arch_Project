@@ -89,7 +89,7 @@ void init_main_memory(char* memin) {
 		memory[curr_line] = strtoul(line, NULL, 16);
 		curr_line++;
 	}
-	while (curr_line < MEMSIZE) {//in case the file we got does not have all the 0 lines
+	while (curr_line < mem_size) {//in case the file we got does not have all the 0 lines
 		memory[curr_line] = 0;
 		curr_line++;
 	}

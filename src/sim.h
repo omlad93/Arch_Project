@@ -1,5 +1,7 @@
-#include "memory.h"
+#include "src\Memory\memory.h""
 #include "core.h"
+#include <stdio.h>
+
 
 
 //memory parameters
