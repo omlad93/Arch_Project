@@ -1,6 +1,28 @@
-#include "core.h"
+	#include "core.h"
 
-void init_core(FILE* trace_file, FILE* imem, single_core* core){
+
+void init_core_for_debug(FILE* trace_file, single_core* core){
+    core->pc = 0;
+    core->is_halt = 0;
+    int j = 0;
+        while (j < MEM_SIZE) {
+		core->Op_Mem[j] = 0;
+		j++;
+	}
+    core->trace_file = trace_file;
+    core->Cache = (cache*)calloc(1, sizeof(cache));
+    init_cache(core->Cache);
+    core->IF_op = (operation*)calloc(1, sizeof(operation));
+    core->ID_op = (operation*)calloc(1, sizeof(operation));
+    core->EX_op = (operation*)calloc(1, sizeof(operation));
+    core->MEM_op = (operation*)calloc(1, sizeof(operation));
+    core->WB_op = (operation*)calloc(1, sizeof(operation));
+    for(int i = 0; i < 16; i++){
+        core->Reg_File[i] = 0;
+    }
+}
+
+void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->pc = 0;
     core->is_halt = 0;
     read_imem(imem, core);
@@ -15,6 +37,7 @@ void init_core(FILE* trace_file, FILE* imem, single_core* core){
     for(int i = 0; i < 16; i++){
         core->Reg_File[i] = 0;
     }
+    cores[core_num] = core;
 }
 
 void read_imem(FILE* imem, single_core* core){
@@ -30,11 +53,13 @@ void read_imem(FILE* imem, single_core* core){
 
 }
 
-void simulate_clock_cycle(single_core* core, int clock_cycle, int* halt){
+void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
     int branch_taken;
 
     int cache_hit;
+
+    single_core *core = cores[core_num];
 
     //start_clock_cycle();
     cache_hit = MEM_ex(core);
@@ -46,7 +71,7 @@ void simulate_clock_cycle(single_core* core, int clock_cycle, int* halt){
                 IF_ex(core);
             }
             
-            EX_ex(core);
+            EX_ex(core_num);
 
             *(halt) = WB_ex(core);
 
@@ -73,12 +98,13 @@ void IF_ex(single_core* core) {
 
 int ID_ex(single_core* core){
 
+    int next_pc; //used only in JAL op
     int imm;
     int branch_taken = 0;
 
     // Decoding the registers value
     int inst = core->ID_op->inst;
-    imm = (inst & IMM_MASK);
+    imm = (int)(inst & IMM_MASK);
     core->ID_op->code =  (inst & OPP_MASK) >> OPP_SHFT;
     core->ID_op->rd = (inst & RD_MASK) >> RD_SHFT;
     core->ID_op->rd_val = core->Reg_File[core->ID_op->rd];
@@ -96,7 +122,11 @@ int ID_ex(single_core* core){
     else{
         core->ID_op->rt_val =  core->Reg_File[core->ID_op->rt];
     }
-    
+    /*
+    printf("inst = %08x\n", inst);
+    printf("code = %2x, rd = %i, rs = %i, rt = %i, imm = %i\n", core->ID_op->code, core->ID_op->rd, core->ID_op->rs, core->ID_op->rt, imm);
+    printf("rd_val = %i, rs_val = %i, rt_val = %i, imm = %i\n", core->ID_op->rd_val, core->ID_op->rs_val, core->ID_op->rt_val, imm);
+    */
 
     // Decoding the function
     switch (core->ID_op->code) {
@@ -170,7 +200,6 @@ int ID_ex(single_core* core){
         }
         return branch_taken;
 	case(JAL):
-        int next_pc;
 		core->ID_op->op_code = &nop;
         next_pc = core->ID_op->rd_val & LSB_9BIT;
         core->ID_op->rd = 15;
@@ -201,9 +230,11 @@ int ID_ex(single_core* core){
 
 }
 
-void EX_ex(single_core* core){
+void EX_ex(int core_num){
 
-    core->ID_op->op_code(core);
+    single_core *core = cores[core_num];
+
+    core->ID_op->op_code(core_num);
 }
 
 int MEM_ex(single_core* core){
@@ -226,6 +257,7 @@ int WB_ex(single_core* core){
     else{
         if(core->WB_op->rd != 0 && core->WB_op->rd != 1){ // Won't write to registers r0 and r1
             core->Reg_File[core->WB_op->rd] = core->WB_op->rd_val;
+            //printf("REG_FILE[%i] = %i\n", core->WB_op->rd, core->WB_op->rd_val);
         }
         return 0;
     }
@@ -253,34 +285,41 @@ void start_clock_cycle(){
 
 }*/
 
+void proceed_reg_data(operation *op1, operation *op2){
+
+    op1->code = op2->code;
+    op1->rd = op2->rd;
+    op1->rs = op2->rs;
+    op1->rt = op2->rt;
+    op1->rd_val = op2->rd_val;
+    op1->rs_val = op2->rs_val;
+    op1->rt_val = op2->rt_val;
+    op1->addr = op2->addr;
+    op1->op_pc = op2->op_pc;
+    op1->inst = op2->inst;
+    op1->op_code = op2->op_code;
+
+}
 //reg D --> reg Q
 void end_clock_sycle(single_core* core){
 /*
-    IF_ID->spro->opcode = IF_ID->sprn->opcode;
-    IF_ID->spro->rd = IF_ID->sprn->rd;
-    IF_ID->spro->rs = IF_ID->sprn->rs;
-    IF_ID->spro->rt = IF_ID->sprn->rt;
 
-    ID_EX->spro->opcode = ID_EX->sprn->opcode;
-    ID_EX->spro->rd = ID_EX->sprn->rd;
-    ID_EX->spro->rs = ID_EX->sprn->rs;
-    ID_EX->spro->rt = ID_EX->sprn->rt;
+    printf("IF pc = %03x\n", core->IF_op->op_pc);
+    printf("ID pc = %03x\n", core->ID_op->op_pc);
+    printf("EX pc = %03x\n", core->EX_op->op_pc);
+    printf("MEM pc = %03x\n", core->MEM_op->op_pc);
+    printf("WB pc = %03x\n", core->WB_op->op_pc);
+    */
 
-    EX_MEM->spro->opcode = EX_MEM->sprn->opcode;
-    EX_MEM->spro->rd = EX_MEM->sprn->rd;
-    EX_MEM->spro->rs = EX_MEM->sprn->rs;
-    EX_MEM->spro->rt = EX_MEM->sprn->rt;
+    proceed_reg_data(core->WB_op, core->MEM_op);
+    proceed_reg_data(core->MEM_op, core->EX_op);
+    proceed_reg_data(core->EX_op, core->ID_op);
+    proceed_reg_data(core->ID_op, core->IF_op);
 
-    MEM_WB->spro->opcode = MEM_WB->sprn->opcode;
-    MEM_WB->spro->rd = MEM_WB->sprn->rd;
-    MEM_WB->spro->rs = MEM_WB->sprn->rs;
-    MEM_WB->spro->rt = MEM_WB->sprn->rt; */
-      
-
-    core->WB_op = core->MEM_op;
-    core->MEM_op = core->EX_op;
-    core->EX_op = core->ID_op;
-    core->ID_op = core->IF_op;
+    //core->WB_op = core->MEM_op;
+    //core->MEM_op = core->EX_op;
+    //core->EX_op = core->ID_op;
+    //core->ID_op = core->IF_op;
 
 }
 
@@ -291,78 +330,80 @@ void print_trace(single_core* core, int clock_cycle){
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
 /* **********************************************************/
 //1
-void add(single_core* core) {
-
+void add(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val + core->EX_op->rt_val;
 
 }
 
 //2
-void sub(single_core* core) {
-
+void sub(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val - core->EX_op->rt_val;
 
 }
 
 //3
-void and(single_core* core) {
-
+void and(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val & core->EX_op->rt_val;
 }
 
 //4
-void or (single_core* core) {
-
+void or (int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val | core->EX_op->rt_val;
 
 }
 
 //5
-void xor (single_core* core) {
-
+void xor (int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val ^ core->EX_op->rt_val;
 
 }
 
 //6
-void mul(single_core* core) {
-
+void mul(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val * core->EX_op->rt_val;
 
 }
 
 //6
-void sll(single_core* core) {
-
+void sll(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val << core->EX_op->rt_val;
 
 }
 
 //7
-void sra(single_core* core) {
-
+void sra(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = core->EX_op->rs_val >> core->EX_op->rt_val;
 
 }
 
 //8
-void srl(single_core* core) {
-
+void srl(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->rd_val = (int)core->EX_op->rs_val >> (int)core->EX_op->rt_val;
 
 }
 
 //16
-void lw(single_core* core) {
+void lw(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->addr = core->EX_op->rs_val + core->EX_op->rt_val;
 }
 
 //17
-void sw(single_core* core) {
+void sw(int core_num) {
+    single_core *core = cores[core_num];
     core->EX_op->addr = core->EX_op->rs_val + core->EX_op->rt_val;
 }
 
 
-void nop(single_core* core) {
+void nop(int core_num) {
 
 }

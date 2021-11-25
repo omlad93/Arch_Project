@@ -1,4 +1,5 @@
-#include "Memory/memory.h"git add
+
+#include "Memory/memory.h"
 
 
 /*
@@ -73,13 +74,9 @@ typedef struct operation {
 	int addr; // used in memory instructions
 
 	int op_pc;
-
-	//int imm_used; // and indicator of using immediate
-
 	int inst; // the opcode line from Imem
-	int(*op_code)(single_core* core); // a function pointer according to opcode
-} operation;
-
+	void(*op_code)(int core_num); // a function pointer according to opcode
+	} operation;
 
 typedef struct core {
 	FILE* trace_file;
@@ -105,47 +102,47 @@ typedef struct core {
 // pipeline_registers *EX_MEM;
 // pipeline_registers *MEM_WB;
 
-
+static single_core* cores[4]; // array of cores in the CPU
 
 
 /* **********************************************************/
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
 /* **********************************************************/
 //1
-void add(single_core* core);
+void add(int core_num);
 
 //2
-void sub(single_core* core);
+void sub(int core_num);
 
 //3
-void and(single_core* core);
+void and(int core_num);
 
 //4
-void or (single_core* core);
+void or (int core_num);
 
 //5
-void xor (single_core* core);
+void xor (int core_num);
 
 //6
-void mul(single_core* core);
+void mul(int core_nume);
 
 //6
-void sll(single_core* core);
+void sll(int core_num);
 
 //7
-void sra(single_core* core);
+void sra(int core_num);
 
 //8
-void srl(single_core* core);
+void srl(int core_num);
 
 //16
-void lw(single_core* core);
+void lw(int core_num);
 
 //17
-void sw(single_core* core);
+void sw(int core_num);
 
 //assign to $0 or unreconized behivour 
-void nop(single_core* core);
+void nop(int core_num);
 
 /* **********************************************************/
 /*  ~~~~~~~~~~   Single core execution functions ~~~~~~~~~  */
@@ -157,7 +154,7 @@ void IF_ex(single_core* core);
 
 int ID_ex(single_core* core);
 
-void EX_ex(single_core* core);
+void EX_ex(int core_num);
 
 int MEM_ex(single_core* core);
 
@@ -165,13 +162,13 @@ int WB_ex(single_core* core);
 
 /* Simulates Single Core clock cycle.
 receives the core, the number of the click cycle and a pointer to int that indicates wheter to end the execution of this core*/
-void simulate_clock_cycle(single_core* core, int clock_cycle, int* halt);
+void simulate_clock_cycle(int core_num, int clock_cycle, int* halt);
 
 //void start_clock_cycle(single_core* core);
 
 void end_clock_sycle(single_core* core);
 
-void init_core(FILE* imem, single_core* core);
+void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num);
 
 void read_imem(FILE* imem, single_core* core);
 
