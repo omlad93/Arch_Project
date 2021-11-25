@@ -2,6 +2,7 @@
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core){
     core->pc = 0;
+    core->is_halt = 0;
     read_imem(imem, core);
     core->trace_file = trace_file;
     core->Cache = (cache*)calloc(1, sizeof(cache));
@@ -29,7 +30,7 @@ void read_imem(FILE* imem, single_core* core){
 
 }
 
-void simulate_clock_cycle(single_core* core, int clock_cycle){
+void simulate_clock_cycle(single_core* core, int clock_cycle, int* halt){
 
     int branch_taken;
 
@@ -39,13 +40,15 @@ void simulate_clock_cycle(single_core* core, int clock_cycle){
     cache_hit = MEM_ex(core);
 
     if(cache_hit != MISS){
-            IF_ex(core);
-
             branch_taken = ID_ex(core);
 
+            if (!(core->is_halt)){ // Halt command wasn't received yet 
+                IF_ex(core);
+            }
+            
             EX_ex(core);
 
-            WB_ex(core);
+            *(halt) = WB_ex(core);
 
             end_clock_sycle(core);
 
@@ -185,6 +188,7 @@ int ID_ex(single_core* core){
         return branch_taken;
 	case(HALT):
 		core->ID_op->op_code = &nop;
+        core->is_halt = 1;
         branch_taken = 0;
         return branch_taken;
 	//if unknown opcode -> do nop
@@ -214,8 +218,17 @@ int MEM_ex(single_core* core){
     }
 }
 
-void WB_ex(single_core* core){
-    core->Reg_File[core->WB_op->rd] = core->WB_op->rd_val;
+int WB_ex(single_core* core){
+    
+    if(core->WB_op->code == HALT){
+        return 1;
+    }
+    else{
+        if(core->WB_op->rd != 0 && core->WB_op->rd != 1){ // Won't write to registers r0 and r1
+            core->Reg_File[core->WB_op->rd] = core->WB_op->rd_val;
+        }
+        return 0;
+    }
 }
 
 /*

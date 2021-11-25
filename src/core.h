@@ -1,4 +1,4 @@
-#include "memory.h"git add
+#include "Memory/memory.h"git add
 
 
 /*
@@ -83,6 +83,7 @@ typedef struct operation {
 
 typedef struct core {
 	FILE* trace_file;
+	int is_halt;
 	int pc;						
 	int Op_Mem[MEM_SIZE];		//Operation Memory aka IMEM
 	int Reg_File[16];
@@ -160,9 +161,11 @@ void EX_ex(single_core* core);
 
 int MEM_ex(single_core* core);
 
-void WB_ex(single_core* core);
+int WB_ex(single_core* core);
 
-void simulate_clock_cycle(single_core* core, int clock_cycle);
+/* Simulates Single Core clock cycle.
+receives the core, the number of the click cycle and a pointer to int that indicates wheter to end the execution of this core*/
+void simulate_clock_cycle(single_core* core, int clock_cycle, int* halt);
 
 //void start_clock_cycle(single_core* core);
 
