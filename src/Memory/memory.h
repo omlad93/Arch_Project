@@ -17,10 +17,10 @@
 #define LAST_CPY 3 // BLK_SIZE - 1
 
 // masks and shifts
-#define MEM_MASK 0x000FFFFF // 20 bits mask
-#define TAG_MASK 0x000FFF00 // 12 bits ( 0 : 11) 
-#define BLK_MASK 0x000000FC // 6 bits  (12 : git p17)
-#define OST_MASK 0x00000003 // 2 bits  (18 : 19)
+#define MEM_MASK 0x000FFFFF // 20 bits (19:0)
+#define TAG_MASK 0x000FFF00 // 12 bits (19:8) 
+#define BLK_MASK 0x000000FC // 6 bits  (7:3)
+#define OST_MASK 0x00000003 // 2 bits  (3:0)
 #define IDX_MASK 0x000000FF // 8 bits  (7:0)
 #define TAG_SHFT 8
 #define BLK_SHFT 2
@@ -30,7 +30,7 @@
 #define _get_block(address) ((((unsigned int)address) & BLK_MASK) >> BLK_SHFT)  // get cachline from address
 #define _get_idx(address)   (((unsigned int)address) & IDX_MASK)                // get word idx in cache
 #define alligned(address)   (((unsigned int)address) - (((unsigned int)address) % BLK_SIZE))    // get first address in the block
-
+#define construct_address(tag,idx)   (alligned( ((tag << TAG_SHFT) | (idx)) ) )
 
 // mesi states
 #define Invalid   0
@@ -59,6 +59,7 @@
 #define start 0
 #define memory_wait 1
 #define flush 2
+#define dirty_evict 3
 
 // macros mesi behaviour
 #define _cache_handled(handler) (handler < 4)
@@ -67,7 +68,8 @@
 #define time_diff(time_a, time_b) (time_a - time_b)
 #define is_hit(st) (st == HIT)
 #define is_miss(st) (st == MISS)
-
+#define evict_first(c) ( (pending_evc[c] != NULL) & (pending_req[c] != NULL) )
+#define need_to_evict(blk, c) (c->mesi_state[blk] == Modified)
 /* ************************** Structures *************************** */
 
 typedef struct bus_request{
@@ -84,7 +86,8 @@ typedef struct cache{
     int mesi_state[BLOCKS];     // the mesi status of the stored blocks
     int idx;                    // serial id of cache instance
     int busy;                   // a flag used by cache to indicate that the cache request is being processed.
-    bus_request* next_req;      // store the request that will be send on MESI BUS
+    bus_request_p next_req;     // store the request that will be send on MESI BUS
+    bus_request_p next_evict;   // store evict if such is needed
 } cache ;
 typedef cache* cache_p;
 
@@ -128,11 +131,12 @@ static main_memory_p Memory = NULL;         // main memmory
 static mesi_bus_p Bus = NULL;           // the main mesi bus
 
 static bus_request_p pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending requests
+static bus_request_p pending_evc[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending evicts
 static int last_time_served[CACHE_COUNT] = {0};                           // array for use of round robin
 static int waited_cycles;                                                 // counter when accessing main memory;
  
 static inline int compilation_crap(int x) {return (cache_idx + request_id + cycle + waited_cycles +\
-    last_time_served[x%4] + CACHES[0]->busy + Memory->latency + (pending_req[0] == NULL) + Bus->state );}
+    last_time_served[x%4] + CACHES[0]->busy + Memory->latency + (pending_req[0] == NULL) + Bus->state + (pending_evc[1] != NULL) );}
 
 
 
@@ -188,6 +192,9 @@ void snoop_Rd(int handler, int client);
 // perform memory copy on flush when request was RdX
 void snoop_RdX(int handler, int client);
 
+// perform memory copy on evict
+void evict();
+
 //snoop the line
 void snoop();
 
@@ -207,6 +214,8 @@ void load_mem_manually();
 
 void print_cache(FILE* file_w, cache_p cache);
 
+void print_mem(FILE* file_w);
+
 void print_bus();
 
 
@@ -225,5 +234,9 @@ int non_mesi_write(int address, cache_p cache, int* src_reg);
 void fetch_block_immediate(int address, cache_p cache);
 
 void load_mem_manually();
+
+void initiate_memory_system();
+
+void close_memory_system();
 
 #endif

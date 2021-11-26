@@ -9,6 +9,7 @@ void init_cache(cache_p cache){
     cache-> busy = 0;
 
     cache->next_req = calloc(1,sizeof(bus_request));
+    cache->next_evict = calloc(1,sizeof(bus_request));
     for (int i=0; i<WORDS; i++){    /// zero all data
         cache->cache_data[i] = 0;
         if (i < BLOCKS){
@@ -18,6 +19,11 @@ void init_cache(cache_p cache){
     }
 
 
+}
+
+void release_cache(cache_p cache){
+    free(cache->next_evict);
+    free(cache->next_req);
 }
 
 // check if address is cached, return HIT or MISS
@@ -33,8 +39,11 @@ int query(int address, cache_p cache, int mode){
     return (stored & valid) ? HIT : MISS;
 }
 
+
 // read word from cache. if MISS, fetched it throug messi and stall
 int read_word(int address, cache_p cache, int* dest_reg){
+    int idx = _get_idx(alligned(address));
+    int blk = _get_block(address);
     if (query(address,cache,BusRd) == HIT){
         *dest_reg = cache->cache_data[_get_idx(address)];
         return HIT;
@@ -42,11 +51,20 @@ int read_word(int address, cache_p cache, int* dest_reg){
     else if( (cache->busy) == 0) {
         // generate a mesi transaction
         cache -> busy = 1;                      // ignore same calls
+        if (need_to_evict( blk, cache) ) {
+            // generate eviction
+            cache -> next_evict -> cmd = BusFlush;
+            cache -> next_evict -> addr = construct_address(cache->tags[blk],idx) ; 
+            cache -> next_evict -> data = 0;
+            cache -> next_evict -> id = request_id ++;
+            pending_evc[cache->idx] = cache->next_evict;
+        }
         cache -> next_req -> cmd = BusRd;       // Read request
         cache -> next_req -> addr = address;    // address which read is needed
         cache -> next_req -> data = 0;          // no data for read
         cache -> next_req -> id = request_id++;
         pending_req[cache->idx] = cache->next_req; // load request to mesi pool
+
         // printf("\n\t > queued request %.5x\n", cache->next_req->id);
         return MISS;
     }
@@ -70,6 +88,7 @@ int write_word(int address, cache_p cache, int* src_reg){
         cache -> next_req -> data = data;
         cache -> next_req -> id = request_id++;
         pending_req[cache->idx] = cache->next_req; // load request to mesi pool
+        
         // printf("\n\t > queued request %.5x\n", cache->next_req->id);
         return  MISS;
     } 
@@ -93,6 +112,8 @@ void print_cache(FILE* file_w, cache_p cache){
     char mesi;
     int tag, word, blk;
     fprintf(file_w,"| Bk | Index |  Tag  |   Word   | MESI |\n");
+    fprintf(file_w,"----------------------------------------\n");
+
     for (int i =0; i < WORDS; i++){
         blk = _get_block(i);
         mesi = mesi_chars[cache->mesi_state[blk]];
@@ -101,6 +122,21 @@ void print_cache(FILE* file_w, cache_p cache){
         fprintf(file_w,"| %.2i | %.5i | %.5i | %.8i |  %c   | \n",blk ,i, tag, word, mesi);
         if (i % BLK_SIZE == LAST_CPY){
             fprintf(file_w,"|----|-------|-------|----------|------| \n");
+        }
+    }
+}
+
+void print_mem(FILE* file_w){
+    int tag, word, blk;
+    //fprintf(file_w,"| Bk | Index |  Tag  |   Word   |    Addr    |\n");
+    fprintf(file_w,"| Address |   word   | block |  Tag  |\n");
+    for (int i =0; i < mem_size; i++){
+        blk = _get_block(i);
+        tag = _get_tag(i);
+        word = Memory -> data[i];
+        fprintf(file_w,"| %.7i | %.8i | %.5i | %.5i | \n",i ,word, blk, tag);
+        if (i % BLK_SIZE == LAST_CPY){
+            fprintf(file_w,"|---------|----------|-------|-------|\n");
         }
     }
 }
@@ -183,20 +219,26 @@ void close_memory_system(){
 
 // call upon loding request on the bus
 void clear_request_from_cahce(int c){
-    pending_req[c] = NULL;
+    if (Bus->cmd == BusFlush ){
+        // on dirty evict
+        pending_evc[c] = NULL;
+    }else {
+        // om classic request
+        pending_req[c] = NULL;
+    }
     _cache_on_bus(c);
 }
 
 // looad a transaction on the bus (request)
 void generate_transaction(bus_request_p request){
     if (request){
-        Bus->state = start;
+        Bus->state = (request->cmd != BusFlush) ? start : dirty_evict ;
         Bus->addr = request->addr;
         Bus->cmd  = request->cmd;
         Bus->data = request->data;
         Bus->req_id = request ->id;
         Bus->shared = is_shared(Bus->origin, request->addr);
-        _cache_on_bus(Bus->origin);
+        // _cache_on_bus(Bus->origin);
         clear_request_from_cahce(Bus->resp->requestor);
     } 
     else {
@@ -260,7 +302,7 @@ void load_request();
 
 // call when a request is loaded on the bus
 void kick_mesi(){
-    if (!Bus->cmd){
+    if (!Bus->cmd || Bus -> cmd == BusFlush){
         return;
     }
     set_handler(Bus->addr);
@@ -288,7 +330,7 @@ void wait_for_response(){
 void flushing(){
     int word = Bus->resp->copyed;
     if (word == 0){
-        Bus->state = flush;
+        // Bus->state = flush;
         Bus->origin = Bus->resp->handler;
         Bus->cmd = BusFlush;
     }
@@ -335,7 +377,9 @@ void snoop_Rd(int handler, int client){
         shared = (Bus->shared) ||  _cache_handled(handler);
         CACHES[client]->mesi_state[_get_block(Bus->addr)] = shared ? Shared : Exclusive;
         CACHES[client]->tags[_get_block(Bus->addr)] = _get_tag(Bus->addr);
-        if ( _cache_handled(handler)) {CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Shared;}
+        if ( _cache_handled(handler)) {
+            CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Shared;
+            }
         Bus->resp->copyed = 0;
         Bus->state = start;
     }
@@ -365,6 +409,17 @@ void snoop_RdX(int handler, int client){
         Bus->resp->copyed = 0;
         Bus->state = start;
 
+    }
+}
+
+// perform memory copy on evict
+void evict(){
+    int cache_idx = Bus->resp->handler;
+    Memory->data[Bus->addr] = CACHES[cache_idx]->cache_data[_get_idx(Bus->addr)]; // copy data        
+    if (Bus->resp->copyed == BLK_SIZE){
+        CACHES[cache_idx]->mesi_state[_get_block(Bus->addr)] = Invalid;
+        Bus->resp->copyed = 0;
+        Bus->state = start;
     }
 }
 
@@ -404,13 +459,31 @@ int next_core_to_serve(){
     return most_neglected;
 }
 
+// chose next command on bus (used on dirty evict)
+bus_request_p get_request_per_cache(int cache_idx){
+    return (evict_first(cache_idx)) ? (pending_evc[cache_idx]) : (pending_req[cache_idx]); 
+
+}
+
+void clear_old_evicts(){
+    for (int c=0; c<CACHE_COUNT; c++){
+        if (pending_evc[c] != NULL){ // if there is a pending eviction
+            if(CACHES[c]->mesi_state[_get_block(pending_evc[c]->addr)] != Modified){ // if do not need to evivt
+                pending_evc[c] = NULL; // remove evict
+            }
+        }
+    }
+}
+
 // get longest request waiting
 bus_request_p get_next_request(){
+    clear_old_evicts();
     int origin = next_core_to_serve();
-    Bus->origin = (origin >0) ? origin : 0;
+    bus_request_p upload = get_request_per_cache(origin);
+    Bus->origin = (origin > 0) ? origin : 0;
     Bus->resp->requestor = (origin >0) ? origin : 0;
-    Bus->resp->cmd = (origin >= 0) ? pending_req[origin]->cmd : BusNOP;
-    return (origin >= 0) ? (pending_req[origin]) : (NULL);
+    Bus->resp->cmd = (origin >= 0) ? (upload->cmd) : (BusNOP);
+    return (origin >= 0) ? (upload) : (NULL);
 }
 
 // manage transaction over messi using state machine
@@ -428,6 +501,10 @@ void mesi_state_machine(){
             flushing();
             snoop();
             break;
+        case dirty_evict:
+            flushing();
+            evict();
+            break;
         default:
             printf("OOPS!");
             exit(1);
@@ -436,54 +513,3 @@ void mesi_state_machine(){
 }
 
 
-
-
-/* ***************** Main Function - inner debug  ****************** */
-
-
-int main(int argc, char* argv[]){
-    FILE* cache_0 = fopen("data_c0.txt","w");
-    FILE* cache_1 = fopen("data_c1.txt","w");
-    FILE* cache_2 = fopen("data_c2.txt","w");
-    FILE* cache_3 = fopen("data_c3.txt","w");
-
-    cache_p c0 = calloc(1,sizeof(cache)); init_cache(c0);
-    cache_p c1 = calloc(1,sizeof(cache)); init_cache(c1);
-    cache_p c2 = calloc(1,sizeof(cache)); init_cache(c2);
-    cache_p c3 = calloc(1,sizeof(cache)); init_cache(c3);
-    
-    
-    initiate_memory_system();
-
-    printf("\n\tCache Debug Main Function: %s\n", argv[argc-1]);
-
-    int run=1, counter =0 ,word=4, offset, alligned_address;
-
-    int st0 = MISS,st1 = MISS,st2 = MISS,st3 = MISS;
-    int rv0, wv1 = 461993, rv2, wv3=8057775;
-
-
-    load_mem_manually();
-    while(run){
-        offset= word %4;
-        alligned_address = word - offset;
-        if (is_miss(st0)){ st0 = read_word (alligned_address   ,c0, &rv0); }
-        if (is_miss(st1)){ st1 = write_word(alligned_address+1 ,c1, &wv1); }
-        if (is_miss(st2)){ st2 = read_word (alligned_address+1 ,c2, &rv2); }
-        if (is_miss(st3)){ st3 = write_word(alligned_address+3 ,c3, &wv3); }
-        mesi_state_machine(Bus);
-        run = (counter < 1024);
-        counter ++;
-    }
-   if (rv2 != wv1) {
-        printf("read @%.5x should have been %.8i but recived %.8i", alligned_address+1, wv1, rv2);
-    }
-    printf(" >> took %i cycles", cycle);
-    print_cache(cache_0,c0); print_cache(cache_1,c1); 
-    print_cache(cache_2,c2); print_cache(cache_3,c3);
-
-    fclose(cache_0); fclose(cache_1); fclose(cache_2); fclose(cache_3);
-    close_memory_system();
-
-    printf("\t Finished [V]");
-}
