@@ -73,6 +73,8 @@ typedef struct operation {
 
 	int addr; // used in memory instructions
 
+	int empty; //indicates a bubble;
+
 	int op_pc;
 	int inst; // the opcode line from Imem
 	void(*op_code)(int core_num); // a function pointer according to opcode

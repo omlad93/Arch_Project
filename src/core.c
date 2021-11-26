@@ -22,6 +22,7 @@ void init_core_for_debug(FILE* trace_file, single_core* core){
     }
 }
 
+
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->pc = 0;
     core->is_halt = 0;
@@ -30,10 +31,15 @@ void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->Cache = (cache*)calloc(1, sizeof(cache));
     init_cache(core->Cache);
     core->IF_op = (operation*)calloc(1, sizeof(operation));
+    core->IF_op->empty = 1;
     core->ID_op = (operation*)calloc(1, sizeof(operation));
+    core->ID_op->empty = 1;
     core->EX_op = (operation*)calloc(1, sizeof(operation));
+    core->EX_op->empty = 1;
     core->MEM_op = (operation*)calloc(1, sizeof(operation));
+    core->MEM_op->empty = 1;
     core->WB_op = (operation*)calloc(1, sizeof(operation));
+    core->WB_op->empty = 1;
     for(int i = 0; i < 16; i++){
         core->Reg_File[i] = 0;
     }
@@ -61,17 +67,28 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
     single_core *core = cores[core_num];
 
+    if(core->is_halt == 1){ // will be true only when the halt instruction in EX stage
+        core->ID_op->empty = 1;
+        core->IF_op->empty = 1;
+    }
+
     //start_clock_cycle();
     cache_hit = MEM_ex(core);
 
     if(cache_hit != MISS){
-            branch_taken = ID_ex(core);
 
             if (!(core->is_halt)){ // Halt command wasn't received yet 
                 IF_ex(core);
             }
+            else{ // Halt command was received
+                core->IF_op->empty = 1;
+            }
+
+            branch_taken = ID_ex(core);
             
             EX_ex(core_num);
+
+            print_trace(core, clock_cycle);
 
             *(halt) = WB_ex(core);
 
@@ -81,8 +98,11 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
                 core->pc++; 
             }
     }
+    else{
+        print_trace(core, clock_cycle);
+    }
 
-    print_trace(core, clock_cycle);
+    
 }
 
 void IF_ex(single_core* core) {
@@ -93,6 +113,7 @@ void IF_ex(single_core* core) {
 
     core->IF_op->inst = line;
     core->IF_op->op_pc = core->pc;
+    core->IF_op->empty = 0;
 
 }
 
@@ -173,28 +194,28 @@ int ID_ex(single_core* core){
         return branch_taken;
 	case(BLT):
 		core->ID_op->op_code = &nop;
-        if(core->ID_op->rs_val <= core->ID_op->rt_val){
+        if(core->ID_op->rs_val < core->ID_op->rt_val){
             core->pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BJT):
 		core->ID_op->op_code = &nop;
-        if(core->ID_op->rs_val >= core->ID_op->rt_val){
+        if(core->ID_op->rs_val > core->ID_op->rt_val){
             core->pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BLE):
 		core->ID_op->op_code = &nop;
-        if(core->ID_op->rs_val < core->ID_op->rt_val){
+        if(core->ID_op->rs_val <= core->ID_op->rt_val){
             core->pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BGE):
 		core->ID_op->op_code = &nop;
-        if(core->ID_op->rs_val > core->ID_op->rt_val){
+        if(core->ID_op->rs_val >= core->ID_op->rt_val){
             core->pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
@@ -295,6 +316,7 @@ void proceed_reg_data(operation *op1, operation *op2){
     op1->rs_val = op2->rs_val;
     op1->rt_val = op2->rt_val;
     op1->addr = op2->addr;
+    op1->empty = op2->empty;
     op1->op_pc = op2->op_pc;
     op1->inst = op2->inst;
     op1->op_code = op2->op_code;
@@ -324,7 +346,39 @@ void end_clock_sycle(single_core* core){
 }
 
 void print_trace(single_core* core, int clock_cycle){
-    fprintf(core->trace_file,"%i %03x %03x %03x %03x %03x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x \n", clock_cycle, core->IF_op->op_pc, core->ID_op->op_pc, core->EX_op->op_pc, core->MEM_op->op_pc, core->WB_op->op_pc, core->Reg_File[2], core->Reg_File[3], core->Reg_File[4], core->Reg_File[5], core->Reg_File[6], core->Reg_File[7], core->Reg_File[8], core->Reg_File[9], core->Reg_File[10], core->Reg_File[11], core->Reg_File[12], core->Reg_File[13], core->Reg_File[14], core->Reg_File[15]);
+    fprintf(core->trace_file,"%i ", clock_cycle);
+    if(core->IF_op->empty == 1){
+        fprintf(core->trace_file,"--- ");
+    }
+    else{
+        fprintf(core->trace_file, "%03x ",core->IF_op->op_pc);
+    }
+    if(core->ID_op->empty == 1){
+        fprintf(core->trace_file,"--- ");
+    }
+    else{
+        fprintf(core->trace_file, "%03x ",core->ID_op->op_pc);
+    }
+    if(core->EX_op->empty == 1){
+        fprintf(core->trace_file,"--- ");
+    }
+    else{
+        fprintf(core->trace_file, "%03x ",core->EX_op->op_pc);
+    }
+    if(core->MEM_op->empty == 1){
+        fprintf(core->trace_file,"--- ");
+    }
+    else{
+        fprintf(core->trace_file, "%03x ",core->MEM_op->op_pc);
+    }
+    if(core->WB_op->empty == 1){
+        fprintf(core->trace_file,"--- ");
+    }
+    else{
+        fprintf(core->trace_file, "%03x ",core->WB_op->op_pc);
+    }
+
+    fprintf(core->trace_file,"%08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x \n", core->Reg_File[2], core->Reg_File[3], core->Reg_File[4], core->Reg_File[5], core->Reg_File[6], core->Reg_File[7], core->Reg_File[8], core->Reg_File[9], core->Reg_File[10], core->Reg_File[11], core->Reg_File[12], core->Reg_File[13], core->Reg_File[14], core->Reg_File[15]);
 }
 /* **********************************************************/
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
