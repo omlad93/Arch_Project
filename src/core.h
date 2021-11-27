@@ -83,7 +83,8 @@ typedef struct operation {
 typedef struct core {
 	FILE* trace_file;
 	int is_halt;
-	int pc;						
+	int pc;
+	int next_pc;						
 	int Op_Mem[MEM_SIZE];		//Operation Memory aka IMEM
 	int Reg_File[16];
 	
@@ -168,13 +169,17 @@ void simulate_clock_cycle(int core_num, int clock_cycle, int* halt);
 
 //void start_clock_cycle(single_core* core);
 
-void end_clock_sycle(single_core* core);
+void end_clock_sycle(single_core* core, int data_hazzard);
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num);
 
 void read_imem(FILE* imem, single_core* core);
 
 void print_trace(single_core* core, int clock_cycle);
+
+int detect_data_hazzard(single_core* core);
+
+void init_operation(operation* op);
 
 //void get_IF_ID_sprn(pipeline_registers* sprn);
 

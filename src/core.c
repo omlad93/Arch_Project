@@ -22,24 +22,36 @@ void init_core_for_debug(FILE* trace_file, single_core* core){
     }
 }
 
+void init_operation(operation* op){
+    op->addr = 0;
+    op->code = -1;
+    op->empty = 1;
+    op->inst = 0;
+    op->op_pc = 0;
+    op->rd = -1;
+    op->rs = -1;
+    op->rt = -1;
+}
+
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->pc = 0;
+    core->next_pc = 0;
     core->is_halt = 0;
     read_imem(imem, core);
     core->trace_file = trace_file;
     core->Cache = (cache*)calloc(1, sizeof(cache));
     init_cache(core->Cache);
     core->IF_op = (operation*)calloc(1, sizeof(operation));
-    core->IF_op->empty = 1;
+    init_operation(core->IF_op);
     core->ID_op = (operation*)calloc(1, sizeof(operation));
-    core->ID_op->empty = 1;
+    init_operation(core->ID_op);
     core->EX_op = (operation*)calloc(1, sizeof(operation));
-    core->EX_op->empty = 1;
+    init_operation(core->EX_op);
     core->MEM_op = (operation*)calloc(1, sizeof(operation));
-    core->MEM_op->empty = 1;
+    init_operation(core->MEM_op);
     core->WB_op = (operation*)calloc(1, sizeof(operation));
-    core->WB_op->empty = 1;
+    init_operation(core->WB_op);
     for(int i = 0; i < 16; i++){
         core->Reg_File[i] = 0;
     }
@@ -59,13 +71,25 @@ void read_imem(FILE* imem, single_core* core){
 
 }
 
+int detect_data_hazzard(single_core* core){
+    if ((core->ID_op->rs == core->EX_op->rd) || (core->ID_op->rt == core->EX_op->rd) || 
+       (core->ID_op->rs == core->MEM_op->rd) || (core->ID_op->rt == core->MEM_op->rd) || 
+       (core->ID_op->rs == core->WB_op->rd) || (core->ID_op->rt == core->WB_op->rd)){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
+
 void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
-    int branch_taken;
-
-    int cache_hit;
+    int branch_taken, cache_hit, data_hazzard;
 
     single_core *core = cores[core_num];
+
+    data_hazzard = 0;
 
     if(core->is_halt == 1){ // will be true only when the halt instruction in EX stage
         core->ID_op->empty = 1;
@@ -85,6 +109,10 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
             }
 
             branch_taken = ID_ex(core);
+
+            //printf("clock_cycle = %i , ID pc = %i\n", clock_cycle, core->ID_op->op_pc);
+
+            data_hazzard = detect_data_hazzard(core);
             
             EX_ex(core_num);
 
@@ -92,13 +120,19 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
             *(halt) = WB_ex(core);
 
-            end_clock_sycle(core);
+            end_clock_sycle(core, data_hazzard);
 
-            if (!branch_taken){
-                core->pc++; 
+            if(!data_hazzard){
+                if(!branch_taken){
+                    core->pc++;
+                }
+                else{
+                    core->pc = core->next_pc;
+                }
             }
     }
     else{
+        core->WB_op->empty = 1;
         print_trace(core, clock_cycle);
     }
 
@@ -148,6 +182,7 @@ int ID_ex(single_core* core){
     printf("code = %2x, rd = %i, rs = %i, rt = %i, imm = %i\n", core->ID_op->code, core->ID_op->rd, core->ID_op->rs, core->ID_op->rt, imm);
     printf("rd_val = %i, rs_val = %i, rt_val = %i, imm = %i\n", core->ID_op->rd_val, core->ID_op->rs_val, core->ID_op->rt_val, imm);
     */
+    
 
     // Decoding the function
     switch (core->ID_op->code) {
@@ -181,42 +216,42 @@ int ID_ex(single_core* core){
 	case(BEQ):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val == core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BNE):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val != core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BLT):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val < core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BJT):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val > core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BLE):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val <= core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
 	case(BGE):
 		core->ID_op->op_code = &nop;
         if(core->ID_op->rs_val >= core->ID_op->rt_val){
-            core->pc = core->ID_op->rd_val & LSB_9BIT;
+            core->next_pc = core->ID_op->rd_val & LSB_9BIT;
             branch_taken = 1;
         }
         return branch_taken;
@@ -225,7 +260,7 @@ int ID_ex(single_core* core){
         next_pc = core->ID_op->rd_val & LSB_9BIT;
         core->ID_op->rd = 15;
         core->ID_op->rd_val = core->pc;
-        core->pc = next_pc;
+        core->next_pc = next_pc;
         branch_taken = 1;
         return branch_taken;
 	case(LW):
@@ -323,20 +358,23 @@ void proceed_reg_data(operation *op1, operation *op2){
 
 }
 //reg D --> reg Q
-void end_clock_sycle(single_core* core){
-/*
+void end_clock_sycle(single_core* core, int data_hazzard){
 
-    printf("IF pc = %03x\n", core->IF_op->op_pc);
-    printf("ID pc = %03x\n", core->ID_op->op_pc);
-    printf("EX pc = %03x\n", core->EX_op->op_pc);
-    printf("MEM pc = %03x\n", core->MEM_op->op_pc);
-    printf("WB pc = %03x\n", core->WB_op->op_pc);
-    */
-
-    proceed_reg_data(core->WB_op, core->MEM_op);
-    proceed_reg_data(core->MEM_op, core->EX_op);
-    proceed_reg_data(core->EX_op, core->ID_op);
-    proceed_reg_data(core->ID_op, core->IF_op);
+    if(data_hazzard && (!core->is_halt)){
+        proceed_reg_data(core->WB_op, core->MEM_op);
+        proceed_reg_data(core->MEM_op, core->EX_op);
+        core->EX_op->empty = 1;
+    }
+    else{
+        proceed_reg_data(core->WB_op, core->MEM_op);
+        proceed_reg_data(core->MEM_op, core->EX_op);
+        proceed_reg_data(core->EX_op, core->ID_op);
+        proceed_reg_data(core->ID_op, core->IF_op);
+    }
+    
+    
+    
+    
 
     //core->WB_op = core->MEM_op;
     //core->MEM_op = core->EX_op;
