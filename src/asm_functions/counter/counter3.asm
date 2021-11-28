@@ -14,4 +14,5 @@ sub, 4, 4, 1, 1      # 11: R4 = R4 - 1 (i--)
 bne, 1, 0, 4, 6      # 12: if(R4 != 0) -> line 6
 add, 2, 5, 0, 0      # 13: R2 = R5 
 
-halt, 0, 0, 0, 0     # 14: halt run - NEED TO CHECK VALUE WAS WRITTEN TO MAIN MEM 
+lw, 9, 0, 1, 256     # 14: R9 = Mem[256] ( dumy op just to make miss conflict )
+halt, 0, 0, 0, 0     # 15: halt run - NEED TO CHECK VALUE WAS WRITTEN TO MAIN MEM 
