@@ -2,9 +2,8 @@
 Simulation of a Multicore-Pipelined CPU with MESI Bus for coherency.  
 Each core has a single data cache and a singles instruction cache.  
 Assembly function for testing are written as well.  
-### Gai Greenberg & Iris Taubkin & Omri Elad  
-
-<br><Br>
+## Gai Greenberg & Iris Taubkin & Omri Elad  
+<br>
 
 The simulation is divided into the following modules:
 ## Core
