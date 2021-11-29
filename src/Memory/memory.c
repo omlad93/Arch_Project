@@ -1,7 +1,11 @@
 
 #include "memory.h"
 
-// call when on an instace upon creation.
+/* ******************       Utility Functios        ******************* */
+/* ****************** Use for Set & Monitor System  ******************* */
+
+
+// Allocate cache fields
 void init_cache(cache_p cache){
     cache->idx = cache_idx;       // create unique idx
     CACHES[cache_idx] = cache;    // add to array
@@ -21,10 +25,38 @@ void init_cache(cache_p cache){
 
 }
 
+// Allocate memory strict & MESI bus
+void initiate_memory_system(){
+    Memory = calloc(1, sizeof(main_memory));
+    Bus = calloc(1,sizeof(mesi_bus));
+    Bus->resp = calloc(1,sizeof(response));
+
+}
+
+// free memory struct & MESI bus
+void close_memory_system(){
+    free(Memory);
+    free(Bus->resp);
+    free(Bus);
+    for (int c=0; c<CACHE_COUNT; c++){
+        free(CACHES[c]->next_req);
+        free(CACHES[c]);
+    }
+}
+
+// free cache fields & pointer
 void release_cache(cache_p cache){
     free(cache->next_evict);
     free(cache->next_req);
+    free(cache); // ?
 }
+
+
+// TODO: I/O functions (Read, Monitor, Store)
+
+/* ******************    Core - Memory Interface    ******************* */
+/* ****************** Use for Load / Store opcodes  ******************* */
+
 
 // check if address is cached, return HIT or MISS
 // for BusRd - if data is valid it's enough
@@ -38,7 +70,6 @@ int query(int address, cache_p cache, int mode){
     else if (mode == BusRdX) valid = cache->mesi_state[block_idx] == Exclusive; // for write, accept only exclusive
     return (stored & valid) ? HIT : MISS;
 }
-
 
 // read word from cache. if MISS, fetched it throug messi and stall
 int read_word(int address, cache_p cache, int* dest_reg){
@@ -97,125 +128,9 @@ int write_word(int address, cache_p cache, int* src_reg){
 
 
 
-/* ************************ Utility Functios  ************************* */
+/* ******************    Cache -> MESI Interface    ******************* */
+/* ****************** Use to assure coherncy in mem ******************* */
 
-void load_mem_manually(){
-    for (int word=0; word<mem_size; word++){
-        Memory->data[word] = word;
-    }
-    printf("\tMemory was loaded correctly {Memory[i] = i}\n");
-    Memory->latency = memory_latency;
-}
-
-void print_cache(FILE* file_w, cache_p cache){
-    char mesi_chars[4] = {'I', 'S', 'E', 'M'};
-    char mesi;
-    int tag, word, blk;
-    fprintf(file_w,"| Bk | Index |  Tag  |   Word   | MESI |\n");
-    fprintf(file_w,"----------------------------------------\n");
-
-    for (int i =0; i < WORDS; i++){
-        blk = _get_block(i);
-        mesi = mesi_chars[cache->mesi_state[blk]];
-        tag = cache->tags[blk];
-        word = cache->cache_data[_get_idx(i)];
-        fprintf(file_w,"| %.2i | %.5i | %.5i | %.8i |  %c   | \n",blk ,i, tag, word, mesi);
-        if (i % BLK_SIZE == LAST_CPY){
-            fprintf(file_w,"|----|-------|-------|----------|------| \n");
-        }
-    }
-}
-
-void print_mem(FILE* file_w){
-    int tag, word, blk;
-    //fprintf(file_w,"| Bk | Index |  Tag  |   Word   |    Addr    |\n");
-    fprintf(file_w,"| Address |   word   | block |  Tag  |\n");
-    for (int i =0; i < mem_size; i++){
-        blk = _get_block(i);
-        tag = _get_tag(i);
-        word = Memory -> data[i];
-        fprintf(file_w,"| %.7i | %.8i | %.5i | %.5i | \n",i ,word, blk, tag);
-        if (i % BLK_SIZE == LAST_CPY){
-            fprintf(file_w,"|---------|----------|-------|-------|\n");
-        }
-    }
-}
-
-void print_bus(){
-    char* states[3] = {"start", "memory_wait", "flush"};
-    char* comnds[4] = {"BusNop","BusRd", "BusRdX", "Flush"};
-    char* origin[5] = {"core0", "core1", "core2", "core2", "Main Memory"};
-    printf("\n\tBus{\n\t\tState : %s\n", states[Bus->state]);
-    printf("\t\tCMD   : %s (%s)->(%s)\n", comnds[Bus->cmd], origin[Bus->origin], origin[Bus->resp->handler]);
-    printf("\t\tAddr  : %.8i\n\t}\n", Bus->addr);
-}
-
-/* *********************** Debugging functions *********************** */
-
-int non_mesi_query(int address, cache_p cache){
-    int block_tag = _get_tag(alligned(address));
-    int block_idx = _get_block(address);
-    int valid = cache->mesi_state[block_idx] != Invalid;
-    int stored = (block_tag == cache->tags[block_idx]);
-    return (stored & valid) ? HIT : MISS;
-}
-
-int non_mesi_read(int address, cache_p cache, int* dest_reg){
-    if (non_mesi_query(address,cache) == HIT){
-
-        *dest_reg = cache->cache_data[_get_idx(address)];
-        printf("\t\t > hit  Rd @ %.8i: %.8i\n", address,cache->cache_data[_get_idx(address)]);
-        return HIT;
-    } else {
-        printf("\t\t > miss Rd @ %.8i: ", address);
-        fetch_block_immediate(alligned(address), cache);
-        return MISS;
-    }
-}
-
-int non_mesi_write(int address, cache_p cache, int* src_reg){
-    if (non_mesi_query(address,cache) == HIT){
-        cache->cache_data[_get_idx(address)] = *src_reg;
-        printf("\t\t > hit  Wr @ %.8i: %.8i\n", address, cache->cache_data[_get_idx(address)] );
-        return HIT;
-    } else {
-        printf("\t\t > miss Wr @ %.8i: ", address);
-        fetch_block_immediate(alligned(address), cache);
-        return MISS;
-    }
-}
-
-void fetch_block_immediate(int alligned_address, cache_p cache){
-
-    for (int j=0; j<BLK_SIZE; j++){
-        cache->cache_data[_get_idx(alligned_address+j)] = Memory->data[(alligned_address+j)];
-    }
-    cache->tags[_get_block(alligned_address)] = _get_tag(alligned_address);
-    cache->mesi_state[_get_block(alligned_address)] = Exclusive;
-    printf(" Fetched Memory[%i:%i] {Block:%i with Tag:%i}\n", \
-             alligned_address, alligned_address+LAST_CPY, _get_block(alligned_address), _get_tag(alligned_address));
-
-
-}
-
-void initiate_memory_system(){
-    Memory = calloc(1, sizeof(main_memory));
-    Bus = calloc(1,sizeof(mesi_bus));
-    Bus->resp = calloc(1,sizeof(response));
-
-}
-
-void close_memory_system(){
-    free(Memory);
-    free(Bus->resp);
-    free(Bus);
-    for (int c=0; c<CACHE_COUNT; c++){
-        free(CACHES[c]->next_req);
-        free(CACHES[c]);
-    }
-}
-
-/* *********************** MESI bus Functios  ************************ */
 
 // call upon loding request on the bus
 void clear_request_from_cahce(int c){
@@ -264,23 +179,6 @@ int is_shared(int requestor, int address){
     return 0;
 }
 
-// return mode for BusRd (Shared / Exclusive)
-int BusRd_mode(int address, cache_p requestor){
-    int block = _get_block(address);
-    int tag = _get_tag(alligned(address));
-    int stored, valid;
-    // int exclusive;
-    for (int i=0; i<CACHE_COUNT; i++){
-        if (i != requestor->idx){
-            stored = (CACHES[i]->tags[block] == tag);
-            valid =  (CACHES[i]->mesi_state[block] != Invalid);
-            //exclusive = CACHES[i]->mesi_state[block] == Exclusive; // if exclusive, need to change ?
-            if (stored & valid) return Shared;
-        }
-    }
-    return Exclusive;
-}
-
 // determain the handler of the request: if (stored & modified) handler = cache.
 void set_handler(int address){
     int block = _get_block(address);
@@ -295,10 +193,7 @@ void set_handler(int address){
          }
     }
     Bus->resp->handler = main_mem;
-}
-
-// load a request to the mesi bus
-void load_request();            
+}      
 
 // call when a request is loaded on the bus
 void kick_mesi(){
@@ -491,18 +386,18 @@ void mesi_state_machine(){
     int state = Bus->state;
     switch (state){
          case start:
-            generate_transaction(get_next_request()); // load transaction on the bus
-            kick_mesi(); //move state machine according to transaction
+            generate_transaction(get_next_request());
+            kick_mesi();         //move state machine according to transaction
             break;
         case memory_wait:
             wait_for_response(); // do nothing untill response is ready
             break;
         case flush:
-            flushing();
+            flushing();          // return requested data
             snoop();
             break;
         case dirty_evict:
-            flushing();
+            flushing();          // send dirty block on evict
             evict();
             break;
         default:
@@ -510,6 +405,115 @@ void mesi_state_machine(){
             exit(1);
         }
     cycle++;
+}
+
+
+/* ******************      Debugging functions      ****************** */
+/* ****************** Used for Memory verifications ****************** */
+
+// Query in single core mode
+int non_mesi_query(int address, cache_p cache){
+    int block_tag = _get_tag(alligned(address));
+    int block_idx = _get_block(address);
+    int valid = cache->mesi_state[block_idx] != Invalid;
+    int stored = (block_tag == cache->tags[block_idx]);
+    return (stored & valid) ? HIT : MISS;
+}
+
+// Read in single core mode
+int non_mesi_read(int address, cache_p cache, int* dest_reg){
+    if (non_mesi_query(address,cache) == HIT){
+
+        *dest_reg = cache->cache_data[_get_idx(address)];
+        printf("\t\t > hit  Rd @ %.8i: %.8i\n", address,cache->cache_data[_get_idx(address)]);
+        return HIT;
+    } else {
+        printf("\t\t > miss Rd @ %.8i: ", address);
+        fetch_block_immediate(alligned(address), cache);
+        return MISS;
+    }
+}
+
+// Write in single core mode
+int non_mesi_write(int address, cache_p cache, int* src_reg){
+    if (non_mesi_query(address,cache) == HIT){
+        cache->cache_data[_get_idx(address)] = *src_reg;
+        printf("\t\t > hit  Wr @ %.8i: %.8i\n", address, cache->cache_data[_get_idx(address)] );
+        return HIT;
+    } else {
+        printf("\t\t > miss Wr @ %.8i: ", address);
+        fetch_block_immediate(alligned(address), cache);
+        return MISS;
+    }
+}
+
+// Copy block of data from memory (1 cycle)
+void fetch_block_immediate(int alligned_address, cache_p cache){
+
+    for (int j=0; j<BLK_SIZE; j++){
+        cache->cache_data[_get_idx(alligned_address+j)] = Memory->data[(alligned_address+j)];
+    }
+    cache->tags[_get_block(alligned_address)] = _get_tag(alligned_address);
+    cache->mesi_state[_get_block(alligned_address)] = Exclusive;
+    printf(" Fetched Memory[%i:%i] {Block:%i with Tag:%i}\n", \
+             alligned_address, alligned_address+LAST_CPY, _get_block(alligned_address), _get_tag(alligned_address));
+
+
+}
+
+// Initate memory with values: MEM[i] = i
+void load_mem_manually(){
+    for (int word=0; word<mem_size; word++){
+        Memory->data[word] = word;
+    }
+    printf("\tMemory was loaded correctly {Memory[i] = i}\n");
+    Memory->latency = memory_latency;
+}
+
+// Print cache to file, as a table with fields
+void print_cache(FILE* file_w, cache_p cache){
+    char mesi_chars[4] = {'I', 'S', 'E', 'M'};
+    char mesi;
+    int tag, word, blk;
+    fprintf(file_w,"| Bk | Index |  Tag  |   Word   | MESI |\n");
+    fprintf(file_w,"----------------------------------------\n");
+
+    for (int i =0; i < WORDS; i++){
+        blk = _get_block(i);
+        mesi = mesi_chars[cache->mesi_state[blk]];
+        tag = cache->tags[blk];
+        word = cache->cache_data[_get_idx(i)];
+        fprintf(file_w,"| %.2i | %.5i | %.5i | %.8i |  %c   | \n",blk ,i, tag, word, mesi);
+        if (i % BLK_SIZE == LAST_CPY){
+            fprintf(file_w,"|----|-------|-------|----------|------| \n");
+        }
+    }
+}
+
+// Print mem to file, as a table with fields
+void print_mem(FILE* file_w){
+    int tag, word, blk;
+    //fprintf(file_w,"| Bk | Index |  Tag  |   Word   |    Addr    |\n");
+    fprintf(file_w,"| Address |   word   | block |  Tag  |\n");
+    for (int i =0; i < mem_size; i++){
+        blk = _get_block(i);
+        tag = _get_tag(i);
+        word = Memory -> data[i];
+        fprintf(file_w,"| %.7i | %.8i | %.5i | %.5i | \n",i ,word, blk, tag);
+        if (i % BLK_SIZE == LAST_CPY){
+            fprintf(file_w,"|---------|----------|-------|-------|\n");
+        }
+    }
+}
+
+// Print Bus status
+void print_bus(){
+    char* states[3] = {"start", "memory_wait", "flush"};
+    char* comnds[4] = {"BusNop","BusRd", "BusRdX", "Flush"};
+    char* origin[5] = {"core0", "core1", "core2", "core2", "Main Memory"};
+    printf("\n\tBus{\n\t\tState : %s\n", states[Bus->state]);
+    printf("\t\tCMD   : %s (%s)->(%s)\n", comnds[Bus->cmd], origin[Bus->origin], origin[Bus->resp->handler]);
+    printf("\t\tAddr  : %.8i\n\t}\n", Bus->addr);
 }
 
 

@@ -70,12 +70,14 @@ int main(int argc, char* argv[]){
 //    if (rv2 != wv1) {
 //         printf("read @%.5x should have been %.8i but recived %.8i", alligned_address+1, wv1, rv2);
 //     }
-    printf("\t >> took %i cycles", cycle);
+    printf("\t >> took %i cycles\n", cycle);
     print_cache(cache_0,c0); print_cache(cache_1,c1); 
     print_cache(cache_2,c2); print_cache(cache_3,c3);
     print_mem(memd);
     fclose(cache_0); fclose(cache_1); fclose(cache_2); fclose(cache_3);
     close_memory_system();
+    release_cache(c0); release_cache(c1);
+    release_cache(c2); release_cache(c3);
 
-    printf("\t Finished [V]");
+    printf("\t [V]: Finished");
 }

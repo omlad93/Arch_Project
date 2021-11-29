@@ -7,6 +7,11 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+/* ******************************************************************** */
+/* ******************    Memory Macro Definitions    ****************** */
+/* ******************        Used in memory.c        ****************** */
+/* ******************************************************************** */
+
 // cache parameters
 #define CACHE_COUNT 4
 #define HIT 1
@@ -61,7 +66,11 @@
 #define flush 2
 #define dirty_evict 3
 
-// macros mesi behaviour
+/* ******************************************************************** */
+/* ******************     Memory Macro Functions     ****************** */
+/* ******************        Used in memory.c        ****************** */
+/* ******************************************************************** */
+
 #define _cache_handled(handler) (handler < 4)
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
 #define _cache_on_bus(idx) (last_time_served[idx] = cycle)
@@ -70,16 +79,23 @@
 #define is_miss(st) (st == MISS)
 #define evict_first(c) ( (pending_evc[c] != NULL) & (pending_req[c] != NULL) )
 #define need_to_evict(blk, c) (c->mesi_state[blk] == Modified)
-/* ************************** Structures *************************** */
 
+
+/* ******************************************************************** */
+/* ******************    Memory System Structures    ****************** */
+/* ******************        Used in memory.c        ****************** */
+/* ******************************************************************** */
+
+// A struct implentation of a cache request from bus
 typedef struct bus_request{
     int cmd;                    // command type
     int addr;                   // requested address
     int data;                   // data
     int id;
 } bus_request;
-typedef bus_request* bus_request_p; 
+typedef bus_request* bus_request_p; // pointer to bus_request
 
+// A struct implentation of a Cache
 typedef struct cache{
     int cache_data[WORDS];      // the actual data stored by cachelines (word)
     int tags[BLOCKS];           // the tags of the stored blocks 
@@ -89,73 +105,109 @@ typedef struct cache{
     bus_request_p next_req;     // store the request that will be send on MESI BUS
     bus_request_p next_evict;   // store evict if such is needed
 } cache ;
-typedef cache* cache_p;
+typedef cache* cache_p; // pointer to cache
 
+// A Virtual data for simulation MESI: to simplify snooping
 typedef struct response{
-    int handler;
-    int requestor;
-    int copyed;
-    int cmd;
+    int handler;                // handler of current request
+    int requestor;              // origin of current request
+    int copyed;                 // counter of transaction in current request
+    int cmd;                    // current request type (to remember when flushing)
 } response;
+typedef response* response_p; // pointer to response
 
+// A struct for implentation of MESI bus with additional programming assistance
 typedef struct mesi_bus{
-    int state;          // for implemetation
-    int origin;         // the origin of transaction
-    int cmd;            // type of transaction
-    int addr;           // address
-    int data;           // data
-    int shared;         // Shared state indicator
-    int req_id;         // request_id
-    response* resp;     // used for flush
+    int state;                  // for implemetation
+    int origin;                 // the origin of transaction
+    int cmd;                    // type of transaction
+    int addr;                   // address
+    int data;                   // data
+    int shared;                 // Shared state indicator
+    int req_id;                 // request_id (for debugging)
+    response_p resp;            // used for flush
 } mesi_bus;
-typedef mesi_bus* mesi_bus_p;
+typedef mesi_bus* mesi_bus_p; // pointer to mesi_bus
 
+// A struct for implentation of main memory
 typedef struct main_memory{
     int data[mem_size];
     int latency;
 } main_memory;
-typedef main_memory* main_memory_p;
+typedef main_memory* main_memory_p; // pointer to main_memory
 
 
 
-
-/* *********************** static variables ************************ */
-
+/* ******************************************************************** */
+/* ****************** Memory System Static Variables ****************** */
+/* ******************        Used in memory.c        ****************** */
+/* ******************************************************************** */
 static int cycle = 1 ;
 
-static int cache_idx = 0;                 //static idx for cache id
-static int request_id = 0;          // each request will have unique id
-static cache_p CACHES[CACHE_COUNT]; // array of caches used by MESI
+static int cache_idx = 0;                                                 //static idx for cache id
+static int request_id = 0;                                                // each request will have unique id
+static cache_p CACHES[CACHE_COUNT];                                       // array of caches used by MESI
 
-static main_memory_p Memory = NULL;         // main memmory
-static mesi_bus_p Bus = NULL;           // the main mesi bus
+static main_memory_p Memory = NULL;                                       // main memmory
+static mesi_bus_p Bus = NULL;                                             // the main mesi bus
 
 static bus_request_p pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending requests
 static bus_request_p pending_evc[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending evicts
 static int last_time_served[CACHE_COUNT] = {0};                           // array for use of round robin
 static int waited_cycles;                                                 // counter when accessing main memory;
  
+
+// Use static Variables to allow strict compilation :)
 static inline int compilation_crap(int x) {return (cache_idx + request_id + cycle + waited_cycles +\
     last_time_served[x%4] + CACHES[0]->busy + Memory->latency + (pending_req[0] == NULL) + Bus->state + (pending_evc[1] != NULL) );}
 
 
+/* ******************************************************************** */
+/* ******************     Functions Declerations     ****************** */
+/* ******************     Implemeted in memory.c     ****************** */
+/* ******************************************************************** */
 
-/* ******************* cache functions headers ******************** */
 
-// call when on an instace upon creation.
+
+/* ******************       Utility Functios        ******************* */
+/* ****************** Use for Set & Monitor System  ******************* */
+
+
+// Allocate cache fields
 void init_cache(cache_p cache);
 
+// Allocate memory strict & MESI bus
+void initiate_memory_system();
+
+// free memory struct & MESI bus
+void close_memory_system();
+
+// free cache fields & pointer
+void release_cache(cache_p cache);
+
+
+// TODO: I/O functions (Read, Monitor, Store)
+
+/* ******************    Core - Memory Interface    ******************* */
+/* ****************** Use for Load / Store opcodes  ******************* */
+
+
 // check if address is cached, return HIT or MISS
+// for BusRd - if data is valid it's enough
+// for BusRdX - data has to be in M state
 int query(int address, cache_p cache, int mode);
 
-// read word from cache to value in *dest_reg. if MISS, fetch it using messi and stall
+// read word from cache. if MISS, fetched it throug messi and stall
 int read_word(int address, cache_p cache, int* dest_reg);
 
 // write data to cache. if MISS, fetched it throug messi and stall
 int write_word(int address, cache_p cache, int* src_reg);
 
 
-/* ******************* MESI functions headers ******************** */
+
+/* ******************    Cache -> MESI Interface    ******************* */
+/* ****************** Use to assure coherncy in mem ******************* */
+
 
 // call upon loding request on the bus
 void clear_request_from_cahce(int c);
@@ -163,24 +215,19 @@ void clear_request_from_cahce(int c);
 // looad a transaction on the bus (request)
 void generate_transaction(bus_request_p request);
 
+// check if data is also cached in other caches
 int is_shared(int requestor, int address);
-
-// return mode for BusRd (Shared / Exclusive)
-int BusRd_mode(int address, cache_p requestor);
 
 // determain the handler of the request: if (stored & modified) handler = cache.
 void set_handler(int address);
 
-// load a request to the mesi bus
-void load_request();
-
-// first step of the request life-cycle
+// call when a request is loaded on the bus
 void kick_mesi();
 
-// it's pretty sraight forward
+// no one uses the bus if waiting for memory
 void wait_for_response();
 
-// response for the reqiest
+// transfer request over the line
 void flushing();
 
 // go over caches, and invalidate the data if needed, skip given caches
@@ -195,48 +242,49 @@ void snoop_RdX(int handler, int client);
 // perform memory copy on evict
 void evict();
 
-//snoop the line
+//snoop the line on flush: modify memory elements
 void snoop();
 
 // get the next core to serve
 int next_core_to_serve();
 
-//get the next request
+// chose next command on bus (used on dirty evict)
+bus_request_p get_request_per_cache(int cache_idx);
+
+void clear_old_evicts();
+
+// get longest request waiting
 bus_request_p get_next_request();
 
 // manage transaction over messi using state machine
 void mesi_state_machine();
 
 
-/* ************************ Utility Functios  ************************* */
+/* ******************      Debugging functions      ****************** */
+/* ****************** Used for Memory verifications ****************** */
 
-void load_mem_manually();
-
-void print_cache(FILE* file_w, cache_p cache);
-
-void print_mem(FILE* file_w);
-
-void print_bus();
-
-
-/* ******************* Debugging functions headers ******************** */
-/*  
-    Providing a no-coherncy cach system
-    to check cache behaviour without mesi
-*/
-
+// Query in single core mode
 int non_mesi_query(int address, cache_p cache);
 
+// Read in single core mode
 int non_mesi_read(int address, cache_p cache, int* dest_reg);
 
+// Write in single core mode
 int non_mesi_write(int address, cache_p cache, int* src_reg);
 
-void fetch_block_immediate(int address, cache_p cache);
+// Copy block of data from memory (1 cycle)
+void fetch_block_immediate(int alligned_address, cache_p cache);
 
+// Initate memory with values: MEM[i] = i
 void load_mem_manually();
 
-void initiate_memory_system();
+// Print cache to file, as a table with fields
+void print_cache(FILE* file_w, cache_p cache);
 
-void close_memory_system();
+// Print mem to file, as a table with fields
+void print_mem(FILE* file_w);
+
+// Print Bus status
+void print_bus();
 
 #endif
