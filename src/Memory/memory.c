@@ -470,6 +470,18 @@ void load_mem_manually(){
     Memory->latency = memory_latency;
 }
 
+void load_mem_manually_for_core_debug(){
+        for (int word=0; word<mem_size; word++){
+        Memory->data[word] = word;
+    }
+    Memory->data[15] = 100;
+    Memory->data[17] = 16;
+    Memory->data[18] = 32;
+    Memory->data[63] = 7;
+    Memory->latency = memory_latency;
+
+}
+
 // Print cache to file, as a table with fields
 void print_cache(FILE* file_w, cache_p cache){
     char mesi_chars[4] = {'I', 'S', 'E', 'M'};

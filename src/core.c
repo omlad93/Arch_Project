@@ -38,6 +38,8 @@ void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->pc = 0;
     core->next_pc = 0;
     core->is_halt = 0;
+    core->data_hazzard = 0;
+    core->prev_cache_miss = 0;
     read_imem(imem, core);
     core->trace_file = trace_file;
     core->Cache = (cache*)calloc(1, sizeof(cache));
@@ -72,9 +74,9 @@ void read_imem(FILE* imem, single_core* core){
 }
 
 int detect_data_hazzard(single_core* core){
-    if ((core->ID_op->rs == core->EX_op->rd) || (core->ID_op->rt == core->EX_op->rd) || 
+    if (((core->ID_op->rs == core->EX_op->rd) || (core->ID_op->rt == core->EX_op->rd) || 
        (core->ID_op->rs == core->MEM_op->rd) || (core->ID_op->rt == core->MEM_op->rd) || 
-       (core->ID_op->rs == core->WB_op->rd) || (core->ID_op->rt == core->WB_op->rd)){
+       (core->ID_op->rs == core->WB_op->rd) || (core->ID_op->rt == core->WB_op->rd)) && ((core->EX_op->rd != 0) && (core->MEM_op->rd != 0) && (core->WB_op->rd != 0))){
         return 1;
     }
     else{
@@ -99,7 +101,9 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
     //start_clock_cycle();
     cache_hit = MEM_ex(core);
 
-    if(cache_hit != MISS){
+    //printf("[DBG] cache_hit = %i\n", cache_hit);
+
+    if(cache_hit != MISS || (core->prev_cache_miss != MISS && cache_hit == MISS)){
 
             if (!(core->is_halt)){ // Halt command wasn't received yet 
                 IF_ex(core);
@@ -114,15 +118,29 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
             data_hazzard = detect_data_hazzard(core);
             
+            //printf("[DBG] clock_cycle = %i\n", clock_cycle);
+            //printf("      data_hazzard = %i\n", data_hazzard);
+            //printf("      CORE data_hazzard = %i\n", core->data_hazzard);
+            /*printf("IF = %i, ID = %i, EX = %i, MEM = %i, WB = %i\n", core->IF_op->op_pc, core->ID_op->op_pc, core->EX_op->op_pc,core->MEM_op->op_pc, core->WB_op->op_pc);
+            printf("ID regs: \n");
+            printf("rd = %i, rs = %i, rt = %i\n", core->ID_op->rd, core->ID_op->rs, core->ID_op->rt);
+            printf("EX regs: \n");
+            printf("rd = %i, rs = %i, rt = %i\n", core->EX_op->rd, core->EX_op->rs, core->EX_op->rt);
+            printf("MEM regs: \n");
+            printf("rd = %i, rs = %i, rt = %i\n", core->MEM_op->rd, core->MEM_op->rs, core->MEM_op->rt);
+            printf("WB regs: \n");
+            printf("rd = %i, rs = %i, rt = %i\n", core->WB_op->rd, core->WB_op->rs, core->WB_op->rt);     */       
             EX_ex(core_num);
 
             print_trace(core, clock_cycle);
 
             *(halt) = WB_ex(core);
 
-            end_clock_sycle(core, data_hazzard);
+            if (cache_hit != MISS){
+                end_clock_sycle(core, data_hazzard);
+            }
 
-            if(!data_hazzard){
+            if(!(data_hazzard)){
                 if(!branch_taken){
                     core->pc++;
                 }
@@ -131,12 +149,13 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
                 }
             }
     }
+    
     else{
         core->WB_op->empty = 1;
         print_trace(core, clock_cycle);
     }
-
-    
+    core->data_hazzard = data_hazzard;
+    core->prev_cache_miss = cache_hit;
 }
 
 void IF_ex(single_core* core) {

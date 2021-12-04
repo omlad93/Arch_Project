@@ -278,6 +278,9 @@ void fetch_block_immediate(int alligned_address, cache_p cache);
 // Initate memory with values: MEM[i] = i
 void load_mem_manually();
 
+// Initate memory with values: in memin.txt manually
+void load_mem_manually_for_core_debug();
+
 // Print cache to file, as a table with fields
 void print_cache(FILE* file_w, cache_p cache);
 

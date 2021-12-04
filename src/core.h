@@ -84,7 +84,9 @@ typedef struct core {
 	FILE* trace_file;
 	int is_halt;
 	int pc;
-	int next_pc;						
+	int next_pc;
+	int data_hazzard;
+	int prev_cache_miss;						
 	int Op_Mem[MEM_SIZE];		//Operation Memory aka IMEM
 	int Reg_File[16];
 	
