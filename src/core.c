@@ -313,11 +313,16 @@ void EX_ex(int core_num){
 }
 
 int MEM_ex(single_core* core){
+    int res = 0;
     if(core->MEM_op->code == LW){
-        return read_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
+        res = read_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
+        mesi_state_machine(Bus);
+        return res;
     }
     else if (core->MEM_op->code == SW){
-        return write_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
+        res = write_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
+        mesi_state_machine(Bus);
+        return res;
     }
     else{
         return 0;
