@@ -1,4 +1,4 @@
-#include "src\Memory\memory.h""
+#include "Memory\memory.h"
 #include "core.h"
 #include <stdio.h>
 
