@@ -1,5 +1,7 @@
 #include "sim.h"
 
+// Check if the files exists any way and just needs the parametetrs because there wasnt on the argv 
+// or I understand right and we need to open them from scratch 
 
 //called when sim.exe got no parameters
 void init_files_def(sim_files_p files){
