@@ -1,3 +1,4 @@
+
 #include "core.h"
 
 
@@ -310,8 +311,9 @@ int ID_ex(single_core* core){
 void EX_ex(int core_num){
 
     single_core *core = cores[core_num];
-
-    core->ID_op->op_code(core_num);
+    if (! core->EX_op->empty){
+        core->EX_op->op_code(core_num);
+    }
 }
 
 int MEM_ex(single_core* core){
@@ -397,11 +399,6 @@ void end_clock_sycle(single_core* core, int data_hazzard){
         proceed_reg_data(core->EX_op, core->ID_op);
         proceed_reg_data(core->ID_op, core->IF_op);
     }
-    
-    
-    
-    
-
     //core->WB_op = core->MEM_op;
     //core->MEM_op = core->EX_op;
     //core->EX_op = core->ID_op;
