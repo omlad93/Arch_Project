@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
     clock_cycle = 0;
     while(!(*halt)){
       simulate_clock_cycle(0, clock_cycle, halt);
+      mesi_state_machine();
       clock_cycle++;
     }
     

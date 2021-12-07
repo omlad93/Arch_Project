@@ -35,7 +35,7 @@ int main(int argc, char* argv[]){
         if (is_miss(st1)){ st1 = write_word(alligned_address+1 ,c1, &wv1); }
         if (is_miss(st2)){ st2 = read_word (alligned_address+1 ,c2, &rv2); }
         if (is_miss(st3)){ st3 = write_word(alligned_address+3 ,c3, &wv3); }
-        mesi_state_machine(Bus);
+        mesi_state_machine();
         run = (counter < 1024);
         counter ++;
     }
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
         if (is_miss(st1)){ st1 = write_word(word+1 ,c1, &wv1); }
         if (is_miss(st2)){ st2 = read_word (word+1 ,c2, &rv2); }
         if (is_miss(st3)){ st3 = write_word(word+3 ,c3, &wv3); }
-        mesi_state_machine(Bus);
+        mesi_state_machine();
         run = (counter < 1024);
         counter ++;
     }
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
         // if (is_miss(st1)){ st1 = write_word(word+1  ,c3,  &wv1); }
         // if (is_miss(st2)){ st2 = write_word (word+1 ,c3,  &counter); }
         // if (is_miss(st3)){ st3 = write_word(word+3  ,c3,  &wv3); }
-        mesi_state_machine(Bus);
+        mesi_state_machine();
         run = (counter < 1024);
         counter ++;
     }

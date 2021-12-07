@@ -316,12 +316,12 @@ int MEM_ex(single_core* core){
     int res = 0;
     if(core->MEM_op->code == LW){
         res = read_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        mesi_state_machine(Bus);
+        // mesi_state_machine(Bus);
         return res;
     }
     else if (core->MEM_op->code == SW){
         res = write_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        mesi_state_machine(Bus);
+        // mesi_state_machine(Bus);
         return res;
     }
     else{

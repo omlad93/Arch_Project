@@ -471,7 +471,7 @@ void load_mem_manually(){
 }
 
 void load_mem_manually_for_core_debug(){
-        for (int word=0; word<mem_size; word++){
+    for (int word=0; word<mem_size; word++){
         Memory->data[word] = word;
     }
     Memory->data[15] = 100;
