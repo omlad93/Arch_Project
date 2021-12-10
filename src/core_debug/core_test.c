@@ -23,7 +23,7 @@ void read_memory(){
 		Memory->data[j] = 0;
 		j++;
 	}
-  printf("Finished leading memory\n");
+  printf("Finished loading memory\n");
 }
 
 
@@ -43,8 +43,8 @@ int main(int argc, char* argv[]) {
     halt = (int*)calloc(1, sizeof(int));
     *halt = 0;
 
-    trace = fopen("trace3.txt","w");
-    imem = fopen("imem3.txt","r");
+    trace = fopen("trace2.txt","w");
+    imem = fopen("imem2.txt","r");
 
     if(trace == NULL || imem == NULL){
 		  printf( "Error opening files");
@@ -58,18 +58,16 @@ int main(int argc, char* argv[]) {
     initiate_memory_system();
     read_memory();
     // load_mem_manually_for_core_debug();
-    /*for(int clock_cycle = 0; clock_cycle < 30; clock_cycle++){
+    for(int clock_cycle = 0; clock_cycle < 80; clock_cycle++){
       simulate_clock_cycle(0, clock_cycle, halt);
-    }*/
+      mesi_state_machine();
+    }
     clock_cycle = 0;
-    while(!(*halt)){
-      if (clock_cycle == 1602){
-        printf("hah");
-      }
+    /*while(!(*halt)){
       simulate_clock_cycle(0, clock_cycle, halt);
       mesi_state_machine();
       clock_cycle++;
-    }
+    }*/
     
     printf("\tFinished simulation\n");
 
