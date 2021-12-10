@@ -145,16 +145,6 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
                 printf("WB->rd = %i\n", core->WB_op->rd);
 
             }
-            if(clock_cycle == 68){
-                printf("[DBG] cache_hit = %i, clock_cycle - %i\n", cache_hit, clock_cycle);
-                printf("data_hazzard = %i\n", data_hazzard);
-                printf("ID-pc = %i, EX-pc = %i, MEM-pc = %i, WB-pc = %i\n", core->ID_op->op_pc, core->EX_op->op_pc, core->MEM_op->op_pc, core->WB_op->op_pc);
-                printf("ID->rs = %i, ID->rt = %i\n", core->ID_op->rs, core->ID_op->rt);
-                printf("EX->rd = %i\n", core->EX_op->rd);
-                printf("MEM->rd = %i\n", core->MEM_op->rd);
-                printf("WB->rd = %i\n", core->WB_op->rd);
-
-            }
 
             //printf("[DBG] clock_cycle = %i\n", clock_cycle);
             //printf("      data_hazzard = %i\n", data_hazzard);
