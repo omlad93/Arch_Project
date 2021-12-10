@@ -1,7 +1,10 @@
 
 #include "memory.h"
+
 #ifndef CORE_H
 #define CORE_H
+
+#define cores_count 4 
 
 
 /*
@@ -109,7 +112,7 @@ typedef struct core {
 // pipeline_registers *EX_MEM;
 // pipeline_registers *MEM_WB;
 
-static single_core* cores[4]; // array of cores in the CPU
+single_core** cores[cores_count]; // array of cores in the CPU
 // int fuck_this(){
 // 	return cores[0]->pc;
 // } 

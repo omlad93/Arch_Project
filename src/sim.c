@@ -5,11 +5,12 @@
 
 //called when sim.exe got no parameters
 void init_files_def(sim_files_p files){
-    files->imem0 = fopen("imem0.txt" ,"w") ;
-    files->imem1 = fopen("imem1.txt" ,"w") ;
-    files->imem2 = fopen("imem2.txt" ,"w") ;
-    files->imem3 = fopen("imem3.txt" ,"w") ;
-    files->memin = fopen("memin.txt" ,"w") ;
+    
+    files->imem0 = fopen("imem0.txt" ,"r") ;
+    files->imem1 = fopen("imem1.txt" ,"r") ;
+    files->imem2 = fopen("imem2.txt" ,"r") ;
+    files->imem3 = fopen("imem3.txt" ,"r") ;
+    files->memin = fopen("memin.txt" ,"r") ;
     files->memout = fopen("memout.txt" ,"w") ;
     files->regout0 = fopen("regout0.txt" ,"w") ;
     files->regout1 = fopen("regout1.txt" ,"w") ;
@@ -33,19 +34,10 @@ void init_files_def(sim_files_p files){
     files->stats2 = fopen("stats2.txt" ,"w") ;
     files->stats3 = fopen("stats3.txt" ,"w") ;
 
-    //input files should be closed and reopen as read 
-    fclose(files->imem0);
-    files->imem0 = fopen("imem0.txt" ,"r") ;
-    fclose(files->imem1);
-    files->imem1 = fopen("imem1.txt" ,"r") ;
-    fclose(files->imem2);
-    files->imem2 = fopen("imem2.txt" ,"r") ;
-    fclose(files->imem2);
-    files->imem3 = fopen("imem3.txt" ,"r") ;
-    fclose(files->memin);
-    files->memin = fopen("memin.txt" ,"r") ;
+    
 }
 
+// opens files when start to run 
 void init_files(sim_files_p files, char** argv[]){
     files->imem0 = fopen(argv[1] ,"r") ;
     files->imem1 = fopen(argv[2] ,"r") ;
@@ -77,28 +69,88 @@ void init_files(sim_files_p files, char** argv[]){
 }
 
 
-//initiate the main memory  - needs omri to help 
-void init_main_memory(char* memin) {
-    char line[word];
-    int curr_line = 0;
-    FILE* memin_file = fopen(memin,"r");
-    if (memin_file == NULL) {
-		fprintf(stderr, "Can't open memin file \n");
-		exit(1);
-	}
+// initiate the 4 cores - cores declaration in in sim.h
+void init_cores(single_core** cores){
+    
+    single_core *c0 = (single_core*)calloc(1, sizeof(single_core));
+    init_core(files->core0trace, files->imem0, c0, 0);
+    single_core *c1 = (single_core*)calloc(1, sizeof(single_core));
+    init_core(files->core1trace, files->imem1, c1, 1);
+    single_core *c2 = (single_core*)calloc(1, sizeof(single_core));
+    init_core(files->core2trace, files->imem2, c2, 2);
+    single_core *c3 = (single_core*)calloc(1, sizeof(single_core));
+    init_core(files->core3trace, files->imem0, c3, 3);
+}
+    
 
-    while (fgets(line, 32, memin_file) != NULL) {
-		memory[curr_line] = strtoul(line, NULL, 16);
-		curr_line++;
+// initiate main memory function using memin.txt
+void init_main_memory(FILE *memin){
+  int j, temp;
+  if(memin == NULL){
+    printf("Failed open memin.txt\n");
+  }
+  j = 0;
+  while(!feof(memin)){
+    fscanf(memin, "%08x", &(temp));
+    Memory->data[j] = temp;
+    j++;
+  }
+  while (j < 1048576) {
+		Memory->data[j] = 0;
+		j++;
 	}
-	while (curr_line < mem_size) {//in case the file we got does not have all the 0 lines
-		memory[curr_line] = 0;
-		curr_line++;
-	}
-	fclose(dmemin);
+  printf("Finished loading main memory\n");
+}
+
+void init_cores_done(int **cores_done){
+    for (int i = 0; i < cores_count; i++)
+    {
+        int *halt = (int*)calloc(1, sizeof(int));
+        *halt = 0 ;
+        cores_done[i] = halt ;
+    }
+}
+
+// function to write the main memory to memout file 
+void write_memout(FILE *memout){
+    int j, temp;
+    if(memout == NULL){
+        printf("Failed open memout.txt\n");
+    }
+    j = 0;
+    while (j < mem_size) {
+        fprintf(memout, Memory->data[j]);
+	    j++;
+	    }
+    fclose(memout);
+    printf("Finished writing memory to memout\n");
 }
 
 
-void init_cores(){
+
+int main(int argc, char* argv[]) {
+    int **cores_done[cores_count];
+    int clock_cycle = 0 ;
+    if(argc == 27){
+        init_files(files, argv);
+    } else { 
+        init_files_def(files);
+    }
+
+    init_cores_done(cores_done);
+    init_cores(cores);
+    initiate_memory_system();
+    init_main_memory(files->memin);
     
+    while( *cores_done[0] == 0 || *cores_done[1] == 0 || *cores_done[2] == 0 || *cores_done[3] == 0){
+        for (int i = 0; i < cores_count; i++)
+        {
+            if(*cores_done[i] == 0){
+                simulate_clock_cycle(i, clock_cycle, cores_done[i]);
+            }
+        }
+        mesi_state_machine(); //check with omri about cyc++
+        clock_cycle ++ ;
+    }
+    write_memout(files->memout);
 }

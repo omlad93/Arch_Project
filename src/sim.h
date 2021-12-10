@@ -1,11 +1,8 @@
-#include "Memory\memory.h"
-#include "core.h"
+#include "core_debug/core.h"
 #include <stdio.h>
 
 
-
-//memory parameters
-#define word 32
+sim_files_p files;
 
 typedef struct sim_files{
     FILE *imem0;
@@ -39,17 +36,23 @@ typedef struct sim_files{
 typedef sim_files* sim_files_p;
 
 
-typedef struct cpu{
-    main_memory_p main_memory ;
-    single_core *core_0 ;
-    single_core *core_1 ;
-    single_core *core_2 ;
-    single_core *core_3 ;
-    mesi_bus_p mesi_bus;
-    sim_files_p files;
-} cpu;
-typedef cpu* cpu_p;
+// typedef struct cpu{
+//     // single_core *core_0 ;
+//     // single_core *core_1 ;
+//     // single_core *core_2 ;
+//     // single_core *core_3 ;
+//     single_core* cores;
+//     sim_files_p files;
+// } cpu;
+// typedef cpu* cpu_p;
 
 //init declarations 
 void init_files_def(sim_files_p files);
 void init_files(sim_files_p files, char** argv[]);
+void init_cores(single_core** cores);
+void init_main_memory(FILE *memin); 
+void init_cores_done(int **cores_done);
+int main(int argc, char* argv[]);
+
+// other function declarations 
+void init_main_memory(FILE *memin);
