@@ -142,24 +142,25 @@ typedef main_memory* main_memory_p; // pointer to main_memory
 /* ****************** Memory System Static Variables ****************** */
 /* ******************        Used in memory.c        ****************** */
 /* ******************************************************************** */
-static int cycle = 1 ;
+int cycle; // = 1 ;
 
-static int cache_idx = 0;                                                 //static idx for cache id
-static int request_id = 0;                                                // each request will have unique id
-static cache_p CACHES[CACHE_COUNT];                                       // array of caches used by MESI
+int cache_idx; // = 0;                                                 //static idx for cache id
+int request_id; // = 0;                                                // each request will have unique id
+cache_p CACHES[CACHE_COUNT];                                       // array of caches used by MESI
 
-static main_memory_p Memory = NULL;                                       // main memmory
-static mesi_bus_p Bus = NULL;                                             // the main mesi bus
+main_memory_p Memory; // = NULL;                                       // main memmory
+mesi_bus_p Bus; // = NULL;                                             // the main mesi bus
 
-static bus_request_p pending_req[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending requests
-static bus_request_p pending_evc[CACHE_COUNT] = {NULL, NULL, NULL, NULL}; // all the pending evicts
-static int last_time_served[CACHE_COUNT] = {0};                           // array for use of round robin
-static int waited_cycles;                                                 // counter when accessing main memory;
+bus_request_p pending_req[CACHE_COUNT]; // = {NULL, NULL, NULL, NULL}; // all the pending requests
+bus_request_p pending_evc[CACHE_COUNT]; //= {NULL, NULL, NULL, NULL}; // all the pending evicts
+int last_time_served[CACHE_COUNT]; //= {0};                           // array for use of round robin
+int waited_cycles;                                                 // counter when accessing main memory;
+FILE* bus_trace;
  
 
-// Use static Variables to allow strict compilation :)
-static inline int compilation_crap(int x) {return (cache_idx + request_id + cycle + waited_cycles +\
-    last_time_served[x%4] + CACHES[0]->busy + Memory->latency + (pending_req[0] == NULL) + Bus->state + (pending_evc[1] != NULL) );}
+// // Use static Variables to allow strict compilation :)
+// int compilation_crap(int x) {return (cache_idx + request_id + cycle + waited_cycles +\
+//     last_time_served[x%4] + CACHES[0]->busy + Memory->latency + (pending_req[0] == NULL) + Bus->state + (pending_evc[1] != NULL) );}
 
 
 /* ******************************************************************** */
@@ -185,6 +186,16 @@ void close_memory_system();
 // free cache fields & pointer
 void release_cache(cache_p cache);
 
+// print bus trace file
+// CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
+void write_bus_trace(FILE* file_w, int currect_cycle);
+
+// print memory in 'dump' format
+void dump_cache(cache_p c, FILE* dsram, FILE* tsram);
+
+
+// print main memory in 'dumb' format
+void dump_memory(FILE* mem_out);
 
 // TODO: I/O functions (Read, Monitor, Store)
 

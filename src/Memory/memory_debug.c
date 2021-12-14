@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
     st0 = MISS;st1 = MISS; st2 = MISS; st3 = MISS;
     while(run){
         if (is_miss(st0)){ st0 = read_word (4    ,c0,   &rv0); }
-        if (is_miss(st0)){ st0 = read_word (word    ,c3,   &rv0); }
+        if (is_miss(st1)){ st1 = read_word (word    ,c3,   &rv0); }
         // if (is_miss(st1)){ st1 = write_word(word+1  ,c3,  &wv1); }
         // if (is_miss(st2)){ st2 = write_word (word+1 ,c3,  &counter); }
         // if (is_miss(st3)){ st3 = write_word(word+3  ,c3,  &wv3); }
@@ -75,9 +75,14 @@ int main(int argc, char* argv[]){
     print_cache(cache_2,c2); print_cache(cache_3,c3);
     print_mem(memd);
     fclose(cache_0); fclose(cache_1); fclose(cache_2); fclose(cache_3);
+    FILE* ds = fopen("dsram.txt","w");
+    FILE* ts = fopen("tsram.txt","w");
+    dump_cache(c0,ds,ts);
+    fclose(ds); fclose(ts);
     close_memory_system();
-    release_cache(c0); release_cache(c1);
-    release_cache(c2); release_cache(c3);
+
+
+
 
     printf("\t [V]: Finished");
 }

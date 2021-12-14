@@ -43,6 +43,7 @@ void initiate_memory_system(){
     Memory->latency = memory_latency;
     Bus = calloc(1,sizeof(mesi_bus));
     Bus->resp = calloc(1,sizeof(response));
+    bus_trace = fopen("bustrace_qad.txt","w");
 
 }
 
@@ -64,6 +65,11 @@ void release_cache(cache_p cache){
     free(cache); // ?
 }
 
+// print bus trace file
+// CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
+void write_bus_trace(FILE* file_w, int currect_cycle){
+    fprintf(file_w,"%i %01x %01x %01x %08x %01x\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+}
 
 // TODO: I/O functions (Read, Monitor, Store)
 
@@ -416,6 +422,7 @@ void mesi_state_machine(){
             printf("OOPS!");
             exit(1);
         }
+    write_bus_trace(bus_trace, cycle);
     cycle++;
 }
 

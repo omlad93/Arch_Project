@@ -27,9 +27,23 @@ void init_cache(cache_p cache){
 
 // Allocate memory strict & MESI bus
 void initiate_memory_system(){
+
+    cycle = 1 ;
+    cache_idx = 0;                                                 //static idx for cache id
+    request_id = 0;                                                // each request will have unique id
+    for (int i=0; i < CACHE_COUNT ; i++){
+        pending_evc[i] = NULL;
+        pending_req[i] = NULL;
+        last_time_served[i] =0;
+    }
+    // pending_req = {NULL, NULL, NULL, NULL}; // all the pending requests
+    // pending_evc = {NULL, NULL, NULL, NULL}; // all the pending evicts
+    // last_time_served = {0};                           // array for use of round robin
     Memory = calloc(1, sizeof(main_memory));
+    Memory->latency = memory_latency;
     Bus = calloc(1,sizeof(mesi_bus));
     Bus->resp = calloc(1,sizeof(response));
+    bus_trace = fopen("bustrace_qad.txt","w");
 
 }
 
@@ -39,18 +53,44 @@ void close_memory_system(){
     free(Bus->resp);
     free(Bus);
     for (int c=0; c<CACHE_COUNT; c++){
-        free(CACHES[c]->next_req);
-        free(CACHES[c]);
+        release_cache(CACHES[c]);
     }
+    fclose(bus_trace);
 }
 
 // free cache fields & pointer
 void release_cache(cache_p cache){
-    free(cache->next_evict);
+    // free(cache->next_evict);
     free(cache->next_req);
     free(cache); // ?
 }
 
+// print bus trace file
+// CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
+void write_bus_trace(FILE* file_w, int currect_cycle){
+    fprintf(file_w,"%i %01x %01x %01x %08x %01x\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+}
+
+// print memory cached in c in 'dumb' format
+void dump_cache(cache_p c, FILE* dsram, FILE* tsram){
+    int meta_data, blk;
+    for (int i=0; i <mem_size; i++ ){
+        if (i == alligned(i)){
+            blk = _get_block(i);
+            meta_data = ( ((c->mesi_state[blk]) << 0xC) | (c->tags[blk]));
+            fprintf(tsram,"%08x\n",meta_data);
+        }
+        fprintf(dsram,"%08x\n", c->cache_data[i]);
+    }
+}
+
+// print main memory in 'dumb' format
+void dump_memory(FILE* mem_out){
+    int meta_data, blk;
+    for (int i=0; i <WORDS; i++ ){
+        fprintf(mem_out,"%08x\n",Memory->data[i]);
+    }
+}
 
 // TODO: I/O functions (Read, Monitor, Store)
 
@@ -170,10 +210,9 @@ void generate_transaction(bus_request_p request){
 int is_shared(int requestor, int address){
     int stored, need_to_check;
     for (int i=0; i< CACHE_COUNT; i++){
-        need_to_check = (i != requestor);
-        stored = (query(address, CACHES[i], BusRd) == HIT);
-        if (need_to_check && stored)  {
-            return 1;
+        need_to_check = ((i != requestor) && (CACHES[i] != NULL));
+        if (need_to_check)  {
+            return is_hit((query(address, CACHES[i], BusRd) == HIT));
         }
     }
     return 0;
@@ -404,6 +443,7 @@ void mesi_state_machine(){
             printf("OOPS!");
             exit(1);
         }
+    write_bus_trace(bus_trace, cycle);
     cycle++;
 }
 

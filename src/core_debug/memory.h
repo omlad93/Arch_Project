@@ -155,6 +155,7 @@ bus_request_p pending_req[CACHE_COUNT]; // = {NULL, NULL, NULL, NULL}; // all th
 bus_request_p pending_evc[CACHE_COUNT]; //= {NULL, NULL, NULL, NULL}; // all the pending evicts
 int last_time_served[CACHE_COUNT]; //= {0};                           // array for use of round robin
 int waited_cycles;                                                 // counter when accessing main memory;
+FILE* bus_trace;
  
 
 // // Use static Variables to allow strict compilation :)
@@ -185,6 +186,9 @@ void close_memory_system();
 // free cache fields & pointer
 void release_cache(cache_p cache);
 
+// print bus trace file
+// CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
+void write_bus_trace(FILE* file_w, int currect_cycle);
 
 // TODO: I/O functions (Read, Monitor, Store)
 
