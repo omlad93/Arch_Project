@@ -53,14 +53,14 @@ void close_memory_system(){
     free(Bus->resp);
     free(Bus);
     for (int c=0; c<CACHE_COUNT; c++){
-        free(CACHES[c]->next_req);
-        free(CACHES[c]);
+        release_cache(CACHES[c]);
     }
+    fclose(bus_trace);
 }
 
 // free cache fields & pointer
 void release_cache(cache_p cache){
-    free(cache->next_evict);
+    // free(cache->next_evict);
     free(cache->next_req);
     free(cache); // ?
 }
@@ -69,6 +69,27 @@ void release_cache(cache_p cache){
 // CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
 void write_bus_trace(FILE* file_w, int currect_cycle){
     fprintf(file_w,"%i %01x %01x %01x %08x %01x\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+}
+
+// print memory cached in c in 'dumb' format
+void dump_cache(cache_p c, FILE* dsram, FILE* tsram){
+    int meta_data, blk;
+    for (int i=0; i <mem_size; i++ ){
+        if (i == alligned(i)){
+            blk = _get_block(i);
+            meta_data = ( ((c->mesi_state[blk]) << 0xC) | (c->tags[blk]));
+            fprintf(tsram,"%08x\n",meta_data);
+        }
+        fprintf(dsram,"%08x\n", c->cache_data[i]);
+    }
+}
+
+// print main memory in 'dumb' format
+void dump_memory(FILE* mem_out){
+    int meta_data, blk;
+    for (int i=0; i <WORDS; i++ ){
+        fprintf(mem_out,"%08x\n",Memory->data[i]);
+    }
 }
 
 // TODO: I/O functions (Read, Monitor, Store)
