@@ -64,11 +64,18 @@ void release_cache(cache_p cache){
     free(cache); // ?
 }
 
+
+
 // print bus trace file
 // CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
 void write_bus_trace(FILE* file_w, int currect_cycle){
-    fprintf(file_w,"%i %01x %01x %01x %08x %01x\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+    if(Bus->cmd != BusNOP){
+        fprintf(file_w,"%i %01X %01X %05X %08X %01X\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+    }
 }
+
+
+
 
 // print memory cached in c in 'dumb' format
 void dump_cache(cache_p c, FILE* dsram, FILE* tsram){
@@ -434,6 +441,7 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
          case start:
             generate_transaction(get_next_request(clock_cycle));
             kick_mesi();         //move state machine according to transaction
+            write_bus_trace(files->bustrace, clock_cycle);
             break;
         case memory_wait:
             wait_for_response(); // do nothing untill response is ready
@@ -441,16 +449,18 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
         case flush:
             flushing();          // return requested data
             snoop();
+            write_bus_trace(files->bustrace, clock_cycle);
             break;
         case dirty_evict:
             flushing();          // send dirty block on evict
             evict();
+            write_bus_trace(files->bustrace, clock_cycle);
             break;
         default:
             printf("OOPS!");
             exit(1);
         }
-    write_bus_trace(files->bustrace, clock_cycle);
+    // write_bus_trace(files->bustrace, clock_cycle);
 }
 
 
