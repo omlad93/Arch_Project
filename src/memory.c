@@ -70,7 +70,7 @@ void release_cache(cache_p cache){
 // CYCLE[%d] bus_origid[1] bus_cmd[1] bus_addr[1] bus_data[8] bus_shared[1]
 void write_bus_trace(FILE* file_w, int currect_cycle){
     if(Bus->cmd != BusNOP){
-        fprintf(file_w,"%i %01X %01X %05X %08X %01X\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
+        fprintf(file_w,"%.5i %01X %01X %05X %08X %01X\n", currect_cycle, Bus->origin, Bus->cmd, Bus->addr, Bus->data, Bus->shared );
     }
 }
 
@@ -170,7 +170,8 @@ int write_word(int address, cache_p cache, int* src_reg){
         cache -> busy = 1;
         cache -> next_req -> cmd = BusRdX;
         cache -> next_req -> addr = address;
-        cache -> next_req -> data = data;
+        cache -> next_req -> data = 0;
+        // cache -> next_req -> data = data;
         cache -> next_req -> id = request_id++;
         pending_req[cache->idx] = cache->next_req; // load request to mesi pool
         
@@ -266,11 +267,17 @@ void kick_mesi(){
 
 // no one uses the bus if waiting for memory
 void wait_for_response(){
-    if (waited_cycles < Memory->latency - 1){
-        waited_cycles++;
-    }else{
-        waited_cycles = 0;
+    // if (waited_cycles < Memory->latency - 1){
+    //     waited_cycles++;
+    // }else{
+    //     waited_cycles = 0;
+    //     Bus->state = flush;
+    // }
+    if(waited_cycles == Memory->latency - 1){
         Bus->state = flush;
+        waited_cycles = 0;
+    } else {
+        waited_cycles++;
     }
 }
 
@@ -316,7 +323,7 @@ void snoop_Rd(int handler, int client){
         Memory->data[Bus->addr] = CACHES[handler]->cache_data[_get_idx(Bus->addr)]; // copy data
         CACHES[client]->cache_data[_get_idx(Bus->addr)] = CACHES[handler]->cache_data[_get_idx(Bus->addr)];
     } else { 
-        // copy data fro mmemory to requesting cache
+        // copy data from memory to requesting cache
         CACHES[client]->cache_data[_get_idx(Bus->addr)] = Memory->data[Bus->addr];
     }
     if (Bus->resp->copyed == BLK_SIZE){
@@ -444,7 +451,7 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
             write_bus_trace(files->bustrace, clock_cycle);
             break;
         case memory_wait:
-            wait_for_response(); // do nothing untill response is ready
+            wait_for_response(); // do nothing untill response is ready          
             break;
         case flush:
             flushing();          // return requested data
