@@ -223,14 +223,14 @@ void generate_transaction(bus_request_p request){
 
 // check if data is also cached in other caches
 int is_shared(int requestor, int address){
-    int stored, need_to_check;
+    int stored, need_to_check, shared=0;
     for (int i=0; i< CACHE_COUNT; i++){
         need_to_check = ((i != requestor) && (CACHES[i] != NULL));
         if (need_to_check)  {
-            return is_hit((query(address, CACHES[i], BusRd) == HIT));
+            shared = shared || is_hit((query(address, CACHES[i], BusRd) == HIT));
         }
     }
-    return 0;
+    return shared;
 }
 
 // determain the handler of the request: if (stored & modified) handler = cache.
@@ -335,6 +335,14 @@ void snoop_Rd(int handler, int client){
         if ( _cache_handled(handler)) {
             CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Shared;
             }
+        else if(Bus->shared){
+            // make sure no one is Exclusive
+            for(int c=0; c<CACHE_COUNT; c++){
+                int is_exclusive = CACHES[c]->mesi_state[_get_block(Bus->addr)] == Exclusive;
+                int stored = ( _get_tag(alligned(Bus->addr)) == CACHES[c]->tags[_get_block(Bus->addr]);
+                CACHES[c]->mesi_state[_get_block(Bus->addr)] = (is_exclusive && stored) ? Shared : CACHES[c]->mesi_state[_get_block(Bus->addr)];
+            }
+        }  
         Bus->resp->copyed = 0;
         Bus->state = start;
     }
