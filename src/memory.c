@@ -209,6 +209,14 @@ void generate_transaction(bus_request_p request){
         Bus->req_id = request ->id;
         Bus->shared = is_shared(Bus->origin, request->addr);
         // _cache_on_bus(Bus->origin);
+        if(Bus->shared){
+            // make sure no one is Exclusive
+            for(int c=0; c<CACHE_COUNT; c++){
+                int is_exclusive = CACHES[c]->mesi_state[_get_block(Bus->addr)] == Exclusive;
+                int stored = ( _get_tag(alligned(Bus->addr)) == CACHES[c]->tags[_get_block(Bus->addr)]);
+                CACHES[c]->mesi_state[_get_block(Bus->addr)] = (is_exclusive && stored) ? Shared : Exclusive;
+            }
+        }  
         clear_request_from_cahce(Bus->resp->requestor);
     } 
     else {
@@ -335,14 +343,7 @@ void snoop_Rd(int handler, int client){
         if ( _cache_handled(handler)) {
             CACHES[handler]->mesi_state[_get_block(Bus->addr)] = Shared;
             }
-        else if(Bus->shared){
-            // make sure no one is Exclusive
-            for(int c=0; c<CACHE_COUNT; c++){
-                int is_exclusive = CACHES[c]->mesi_state[_get_block(Bus->addr)] == Exclusive;
-                int stored = ( _get_tag(alligned(Bus->addr)) == CACHES[c]->tags[_get_block(Bus->addr]);
-                CACHES[c]->mesi_state[_get_block(Bus->addr)] = (is_exclusive && stored) ? Shared : CACHES[c]->mesi_state[_get_block(Bus->addr)];
-            }
-        }  
+        
         Bus->resp->copyed = 0;
         Bus->state = start;
     }
