@@ -28,15 +28,15 @@
 #define BLK_MASK 0x000000FC // 6 bits  (7:3)
 #define OST_MASK 0x00000003 // 2 bits  (3:0)
 #define IDX_MASK 0x000000FF // 8 bits  (7:0)
-#define TAG_SHFT 8
-#define BLK_SHFT 2
+#define TAG_SHIFT 8
+#define BLK_SHIFT 2
 
 // macros for indexing
-#define _get_tag(address)   ((((unsigned int)address) & TAG_MASK) >> TAG_SHFT)  // get tag of address
-#define _get_block(address) ((((unsigned int)address) & BLK_MASK) >> BLK_SHFT)  // get cachline from address
+#define _get_tag(address)   ((((unsigned int)address) & TAG_MASK) >> TAG_SHIFT)  // get tag of address
+#define _get_block(address) ((((unsigned int)address) & BLK_MASK) >> BLK_SHIFT)  // get cachline from address
 #define _get_idx(address)   (((unsigned int)address) & IDX_MASK)                // get word idx in cache
-#define alligned(address)   (((unsigned int)address) - (((unsigned int)address) % BLK_SIZE))    // get first address in the block
-#define construct_address(tag,idx)   (alligned( ((tag << TAG_SHFT) | (idx)) ) )
+#define aligned(address)   (((unsigned int)address) - (((unsigned int)address) % BLK_SIZE))    // get first address in the block
+#define construct_address(tag,idx)   (aligned( ((tag << TAG_SHIFT) | (idx)) ) )
 
 // mesi states
 #define Invalid   0
@@ -87,7 +87,7 @@
 /* ******************        Used in memory.c        ****************** */
 /* ******************************************************************** */
 
-// A struct implentation of a cache request from bus
+// A struct implementation of a cache request from bus
 typedef struct bus_request{
     int cmd;                    // command type
     int addr;                   // requested address
@@ -96,7 +96,7 @@ typedef struct bus_request{
 } bus_request;
 typedef bus_request* bus_request_p; // pointer to bus_request
 
-// A struct implentation of a Cache
+// A struct implementation of a Cache
 typedef struct cache{
     int cache_data[WORDS];      // the actual data stored by cachelines (word)
     int tags[BLOCKS];           // the tags of the stored blocks 
@@ -112,14 +112,14 @@ typedef cache* cache_p; // pointer to cache
 typedef struct response{
     int handler;                // handler of current request
     int requestor;              // origin of current request
-    int copyed;                 // counter of transaction in current request
+    int copied;                 // counter of transaction in current request
     int cmd;                    // current request type (to remember when flushing)
 } response;
 typedef response* response_p; // pointer to response
 
-// A struct for implentation of MESI bus with additional programming assistance
+// A struct for implementation of MESI bus with additional programming assistance
 typedef struct mesi_bus{
-    int state;                  // for implemetation
+    int state;                  // for implemenation
     int origin;                 // the origin of transaction
     int cmd;                    // type of transaction
     int addr;                   // address
@@ -130,7 +130,7 @@ typedef struct mesi_bus{
 } mesi_bus;
 typedef mesi_bus* mesi_bus_p; // pointer to mesi_bus
 
-// A struct for implentation of main memory
+// A struct for implementation of main memory
 typedef struct main_memory{
     int data[mem_size];
     int latency;
@@ -149,7 +149,7 @@ int cache_idx; // = 0;                                                 //static 
 int request_id; // = 0;                                                // each request will have unique id
 cache_p CACHES[CACHE_COUNT];                                       // array of caches used by MESI
 
-main_memory_p Memory; // = NULL;                                       // main memmory
+main_memory_p Memory; // = NULL;                                       // main memory
 mesi_bus_p Bus; // = NULL;                                             // the main mesi bus
 
 bus_request_p pending_req[CACHE_COUNT]; // = {NULL, NULL, NULL, NULL}; // all the pending requests
@@ -166,7 +166,7 @@ FILE* bus_trace;
 
 /* ******************************************************************** */
 /* ******************     Functions Declerations     ****************** */
-/* ******************     Implemeted in memory.c     ****************** */
+/* ******************     Implemented in memory.c     ****************** */
 /* ******************************************************************** */
 
 
@@ -209,22 +209,22 @@ void dump_memory(sim_files_p files_p);
 // for BusRdX - data has to be in M state
 int query(int address, cache_p cache, int mode);
 
-// read word from cache. if MISS, fetched it throug messi and stall
+// read word from cache. if MISS, fetched it through mesi and stall
 int read_word(int address, cache_p cache, int* dest_reg);
 
-// write data to cache. if MISS, fetched it throug messi and stall
-int write_word(int address, cache_p cache, int* src_reg);
+// write data to cache. if MISS, fetched it through mesi and stall
+int write_word(int address, cache_p cache, int* src_reg, int pc);
 
 
 
 /* ******************    Cache -> MESI Interface    ******************* */
-/* ****************** Use to assure coherncy in mem ******************* */
+/* ****************** Use to assure coherency in mem ******************* */
 
 
-// call upon loding request on the bus
-void clear_request_from_cahce(int c, int clock_cycle);
+// call upon loading request on the bus
+void clear_request_from_cache(int c, int clock_cycle);
 
-// looad a transaction on the bus (request)
+// load a transaction on the bus (request)
 void generate_transaction(bus_request_p request, int clock_cycle);
 
 // check if data is also cached in other caches
@@ -268,7 +268,7 @@ void clear_old_evicts();
 // get longest request waiting
 bus_request_p get_next_request(int clock_cycle);
 
-// manage transaction over messi using state machine
+// manage transaction over mesi using state machine
 void mesi_state_machine(sim_files_p files, int clock_cycle);
 
 
@@ -285,12 +285,12 @@ int non_mesi_read(int address, cache_p cache, int* dest_reg);
 int non_mesi_write(int address, cache_p cache, int* src_reg);
 
 // Copy block of data from memory (1 cycle)
-void fetch_block_immediate(int alligned_address, cache_p cache);
+void fetch_block_immediate(int aligned_address, cache_p cache);
 
 // Initate memory with values: MEM[i] = i
 void load_mem_manually();
 
-// Initate memory with values: in memin.txt manually
+// Initate memory with values manually
 void load_mem_manually_for_core_debug();
 
 // Print cache to file, as a table with fields
@@ -298,8 +298,5 @@ void print_cache(FILE* file_w, cache_p cache);
 
 // Print mem to file, as a table with fields
 void print_mem(FILE* file_w);
-
-// Print Bus status
-void print_bus();
 
 #endif
