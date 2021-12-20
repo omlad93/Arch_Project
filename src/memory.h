@@ -74,7 +74,7 @@
 
 #define _cache_handled(handler) (handler < 4)
 #define inc_positive(time) ((time >= 0) ? (time + 1) : time)
-#define _cache_on_bus(idx) (last_time_served[idx] = cycle)
+#define _cache_on_bus(idx,clock_cycle) (last_time_served[idx] = clock_cycle)
 #define time_diff(time_a, time_b) (time_a - time_b)
 #define is_hit(st) (st == HIT)
 #define is_miss(st) (st == MISS)
@@ -222,10 +222,10 @@ int write_word(int address, cache_p cache, int* src_reg);
 
 
 // call upon loding request on the bus
-void clear_request_from_cahce(int c);
+void clear_request_from_cahce(int c, int clock_cycle);
 
 // looad a transaction on the bus (request)
-void generate_transaction(bus_request_p request);
+void generate_transaction(bus_request_p request, int clock_cycle);
 
 // check if data is also cached in other caches
 int is_shared(int requestor, int address);
@@ -240,7 +240,7 @@ void kick_mesi();
 void wait_for_response();
 
 // transfer request over the line
-void flushing();
+void flushing(int clock_cycle);
 
 // go over caches, and invalidate the data if needed, skip given caches
 void invalidate_caches(int client, int provider, int block_idx);

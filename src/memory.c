@@ -188,7 +188,7 @@ int write_word(int address, cache_p cache, int* src_reg){
 
 
 // call upon loding request on the bus
-void clear_request_from_cahce(int c){
+void clear_request_from_cahce(int c, int clock_cycle){
     if (Bus->cmd == BusFlush ){
         // on dirty evict
         pending_evc[c] = NULL;
@@ -196,28 +196,29 @@ void clear_request_from_cahce(int c){
         // om classic request
         pending_req[c] = NULL;
     }
-    _cache_on_bus(c);
+    _cache_on_bus(c,clock_cycle);
 }
 
 // looad a transaction on the bus (request)
-void generate_transaction(bus_request_p request){
+void generate_transaction(bus_request_p request, int clock_cycle){
     if (request){
         Bus->state = (request->cmd != BusFlush) ? start : dirty_evict ;
         Bus->addr = request->addr;
         Bus->cmd  = request->cmd;
         Bus->data = request->data;
         Bus->req_id = request ->id;
-        Bus->shared = is_shared(Bus->origin, request->addr);
-        // _cache_on_bus(Bus->origin);
+        Bus->shared = is_shared(Bus->origin, request->addr);  
+        clear_request_from_cahce(Bus->resp->requestor, clock_cycle);
         if(Bus->shared){
             // make sure no one is Exclusive
             for(int c=0; c<CACHE_COUNT; c++){
                 int is_exclusive = CACHES[c]->mesi_state[_get_block(Bus->addr)] == Exclusive;
                 int stored = ( _get_tag(alligned(Bus->addr)) == CACHES[c]->tags[_get_block(Bus->addr)]);
-                CACHES[c]->mesi_state[_get_block(Bus->addr)] = (is_exclusive && stored) ? Shared : Exclusive;
+                if (stored && is_exclusive){
+                    CACHES[c]->mesi_state[_get_block(Bus->addr)] = Shared;
+                }
             }
-        }  
-        clear_request_from_cahce(Bus->resp->requestor);
+        }
     } 
     else {
         Bus->state = start;
@@ -290,7 +291,7 @@ void wait_for_response(){
 }
 
 // transfer request over the line
-void flushing(){
+void flushing(int clock_cycle){
     int word = Bus->resp->copyed;
     if (word == 0){
         // Bus->state = flush;
@@ -301,7 +302,7 @@ void flushing(){
         Bus->addr = alligned(Bus->addr) + word;
         if _cache_handled(Bus->resp->handler){
             Bus->data = CACHES[Bus->resp->handler]->cache_data[_get_idx(Bus->addr)];
-            _cache_on_bus(Bus->resp->handler);
+            _cache_on_bus(Bus->resp->handler, clock_cycle);
         } else {
             Bus->data = Memory->data[Bus->addr];
         }
@@ -315,7 +316,7 @@ void flushing(){
 // go over caches, and invalidate the data if needed, skip given caches
 void invalidate_caches(int client, int provider, int block_idx){
     int cache_is_relevant;
-    for (int j=0; j<3; j++){
+    for (int j=0; j<CACHE_COUNT; j++){
         cache_is_relevant = (j != client) && (j != provider);
         if ( cache_is_relevant && query(Bus->addr,CACHES[j],BusRd)){
              CACHES[j]->mesi_state[block_idx] = Invalid;
@@ -354,14 +355,14 @@ void snoop_RdX(int handler, int client){
     if _cache_handled(handler){
         // invalidate other caches (wait with handler cache)
         // copy data fro mmemory to requesting cache
-        invalidate_caches(client, handler, _get_block(Bus->addr));
+        invalidate_caches(client, main_mem, _get_block(Bus->addr));
         Memory->data[Bus->addr] = CACHES[handler]->cache_data[_get_idx(Bus->addr)]; // copy data
         CACHES[client]->cache_data[_get_idx(Bus->addr)] = CACHES[handler]->cache_data[_get_idx(Bus->addr)];
         
     } else { 
         // invalidate other caches
         // copy data from handler cache to memory and to cache.
-        invalidate_caches(client, handler, _get_block(Bus->addr));
+        invalidate_caches(client, main_mem, _get_block(Bus->addr));
         CACHES[client]->cache_data[_get_idx(Bus->addr)] = Memory->data[Bus->addr];  
     }
     if (Bus->resp->copyed == BLK_SIZE){
@@ -415,11 +416,11 @@ int next_core_to_serve(int clock_cycle){
         if (pending_req[j] != NULL){
             current_neglect =  time_diff(clock_cycle,last_time_served[j]);
             update = (max_neglect_time < current_neglect);
-
             most_neglected = (update) ? j : most_neglected;
             max_neglect_time = (update) ? current_neglect: max_neglect_time ;
         }
     }
+    // printf(" Last Time Served:[%.8i, %.8i, %.8i, %.8i] \n",last_time_served[0], last_time_served[1], last_time_served[2], last_time_served[3]);
     return most_neglected;
 }
 
@@ -455,7 +456,7 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
     int state = Bus->state;
     switch (state){
          case start:
-            generate_transaction(get_next_request(clock_cycle));
+            generate_transaction(get_next_request(clock_cycle), clock_cycle);
             kick_mesi();         //move state machine according to transaction
             write_bus_trace(files->bustrace, clock_cycle);
             break;
@@ -463,12 +464,12 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
             wait_for_response(); // do nothing untill response is ready          
             break;
         case flush:
-            flushing();          // return requested data
+            flushing(clock_cycle);          // return requested data
             snoop();
             write_bus_trace(files->bustrace, clock_cycle);
             break;
         case dirty_evict:
-            flushing();          // send dirty block on evict
+            flushing(clock_cycle);          // send dirty block on evict
             evict();
             write_bus_trace(files->bustrace, clock_cycle);
             break;
