@@ -213,7 +213,7 @@ int query(int address, cache_p cache, int mode);
 int read_word(int address, cache_p cache, int* dest_reg);
 
 // write data to cache. if MISS, fetched it through mesi and stall
-int write_word(int address, cache_p cache, int* src_reg, int pc);
+int write_word(int address, cache_p cache, int* src_reg);
 
 
 
@@ -263,6 +263,7 @@ int next_core_to_serve(int clock_cycle);
 // chose next command on bus (used on dirty evict)
 bus_request_p get_request_per_cache(int cache_idx);
 
+// when evict is no longer needed
 void clear_old_evicts();
 
 // get longest request waiting

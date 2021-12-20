@@ -154,12 +154,8 @@ int read_word(int address, cache_p cache, int* dest_reg){
 }
 
 // write data to cache. if MISS, fetched it through mesi and stall
-int write_word(int address, cache_p cache, int* src_reg, int pc){
+int write_word(int address, cache_p cache, int* src_reg){
     int data = *src_reg;
-    if (cache == CACHES[2]){
-        printf("");
-    }
-
     if (query(address,cache, BusRdX) == HIT){
         cache->cache_data[_get_idx(address)] = data;
         cache->mesi_state[_get_block(address)] = Modified;
@@ -429,6 +425,7 @@ bus_request_p get_request_per_cache(int cache_idx){
 
 }
 
+// when evict is no longer needed
 void clear_old_evicts(){
     for (int c=0; c<CACHE_COUNT; c++){
         if (pending_evc[c] != NULL){ // if there is a pending eviction
