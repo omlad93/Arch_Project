@@ -124,8 +124,8 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
     cache_hit = MEM_ex(core);
 
-    if(cache_hit != MISS || (core->prev_cache_miss != MISS && cache_hit == MISS)){
 
+    if(cache_hit != MISS || (core->prev_cache_miss != MISS && cache_hit == MISS)){
 
             if (!(core->is_halt)){ // Halt command wasn't received yet 
                 IF_ex(core);
@@ -138,6 +138,7 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
 
             data_hazzard = detect_data_hazzard(core);
+
      
             EX_ex(core_num);
 
@@ -152,7 +153,9 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
             if(!(data_hazzard)){
                 if(!branch_taken){
-                    core->pc++;
+                    if (!(core->prev_cache_miss != MISS && cache_hit == MISS)){
+                        core->pc++;
+                    }
                 }
                 else{
                     core->pc = core->next_pc;
@@ -161,7 +164,6 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
     }
     
     else{
-
         core->WB_op->empty = 1;
 
         print_trace(core, clock_cycle);
