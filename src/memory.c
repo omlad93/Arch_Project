@@ -136,7 +136,7 @@ int read_word(int address, cache_p cache, int* dest_reg){
             // generate eviction
             cache -> next_evict -> cmd = BusFlush;
             cache -> next_evict -> addr = construct_address(cache->tags[blk],idx) ; 
-            cache -> next_evict -> data = 0;
+            cache -> next_evict -> data = cache->cache_data[_get_idx(address)];;
             cache -> next_evict -> id = request_id ++;
             pending_evc[cache->idx] = cache->next_evict;
         }
@@ -156,12 +156,22 @@ int read_word(int address, cache_p cache, int* dest_reg){
 // write data to cache. if MISS, fetched it through mesi and stall
 int write_word(int address, cache_p cache, int* src_reg){
     int data = *src_reg;
+    int idx = _get_idx(aligned(address));
+    int blk = _get_block(address);
     if (query(address,cache, BusRdX) == HIT){
         cache->cache_data[_get_idx(address)] = data;
         cache->mesi_state[_get_block(address)] = Modified;
         return HIT; 
     }
     else if( (cache->busy) == 0) {
+        if (need_to_evict( blk, cache) ) {
+            // generate eviction
+            cache -> next_evict -> cmd = BusFlush;
+            cache -> next_evict -> addr = construct_address(cache->tags[blk],idx) ; 
+            cache -> next_evict -> data = cache->cache_data[_get_idx(address)];
+            cache -> next_evict -> id = request_id ++;
+            pending_evc[cache->idx] = cache->next_evict;
+        }
         // generate a mesi transaction
         cache -> busy = 1;
         cache -> next_req -> cmd = BusRdX;
@@ -257,6 +267,9 @@ void set_handler(int address){
 // call when a request is loaded on the bus
 void kick_mesi(){
     if (!Bus->cmd || Bus -> cmd == BusFlush){
+        if(Bus->state == dirty_evict){
+            Bus->resp->handler = Bus->origin;
+        }
         return;
     }
     set_handler(Bus->addr);
@@ -454,7 +467,9 @@ void mesi_state_machine(sim_files_p files, int clock_cycle){
          case start:
             generate_transaction(get_next_request(clock_cycle), clock_cycle);
             kick_mesi();         //move state machine according to transaction
-            write_bus_trace(files->bustrace, clock_cycle);
+            if(Bus->state != dirty_evict){
+                write_bus_trace(files->bustrace, clock_cycle);
+            }
             break;
         case memory_wait:
             wait_for_response(); // do nothing until response is ready          
