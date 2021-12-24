@@ -1,7 +1,7 @@
 add, $r3, $zero, $imm, 3      # 0: R3 = 3 (core number)
 lw,  $r2, $zero, $zero, 0     # 1: load R2 = mem[0] 
 bne, $imm, $r2, $r3, 1        # 2: if(R2 != R3) go to line 1
-add, $r4, $zero, $imm, 126    # 3: R4 = 126  (loops counter backwards - i )
+add, $r4, $zero, $imm, 127    # 3: R4 = 127  (loops counter backwards - i )
 add, $r2, $r2, $imm, 1        # 4: R2 = R2 + 1  (core num + 1)
 sw,  $r2, $zero, $zero, 0     # 5: Mem[0] = R2 
 
