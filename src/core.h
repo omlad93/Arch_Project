@@ -63,9 +63,20 @@ typedef struct registers_s {
 
 } registers_s;
 
-typedef struct pipeline_registers {
+/*typedef struct pipeline_registers {
 		registers_s *spro, *sprn;
-}pipeline_registers;
+}pipeline_registers;*/
+
+typedef struct stats{
+	int cycles;
+	int instructions;
+	int read_hit;
+	int read_miss;
+	int write_hit;
+	int write_miss;
+	int decode_stall;
+	int mem_stall;
+} core_stats;
 
 typedef struct operation {
 	int code; //the code of the operation
@@ -92,7 +103,8 @@ typedef struct core {
 	int pc;
 	int next_pc;
 	int data_hazzard;
-	int prev_cache_miss;						
+	int prev_cache_miss;
+	int prev_mem_inst_pc;						
 	int Op_Mem[MEM_SIZE];		//Operation Memory aka IMEM
 	int Reg_File[16];
 	
@@ -103,6 +115,8 @@ typedef struct core {
 	operation *WB_op;           //Operation in Write Back
 	
 	cache *Cache;               //Cache 
+
+	core_stats *core_stats;     // single core statisrics
 
 } single_core;
 
@@ -186,6 +200,10 @@ void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num);
 void read_imem(FILE* imem, single_core* core);
 
 void print_trace(single_core* core, int clock_cycle);
+
+void print_regs(single_core* core, FILE* regs);
+
+void print_stats(single_core* core, FILE* regs);
 
 int detect_data_hazzard(single_core* core);
 

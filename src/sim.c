@@ -45,6 +45,20 @@ void init_cores_done(int** cores_done){
     }
 }
 
+void print_all_regs(){
+    print_regs(cores[0], files->regout0);
+    print_regs(cores[1], files->regout1);
+    print_regs(cores[2], files->regout2);
+    print_regs(cores[3], files->regout3);
+}
+
+void print_all_stats(){
+    print_stats(cores[0], files->stats0);
+    print_stats(cores[1], files->stats1);
+    print_stats(cores[2], files->stats2);
+    print_stats(cores[3], files->stats3);
+}
+
 int main(int argc, char* argv[]) {
     int *cores_done[cores_count];
     int clock_cycle = 0 ;
@@ -72,5 +86,8 @@ int main(int argc, char* argv[]) {
         clock_cycle ++ ;
     }
     // write_memout(files->memout);
+
+    print_all_regs();
+    print_all_stats();
     dump_memory(files);
 }

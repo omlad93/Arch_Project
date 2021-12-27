@@ -34,6 +34,16 @@ void init_operation(operation* op){
     op->rt = -1;
 }
 
+void init_core_stats(core_stats* stats){
+    stats->cycles = 0;
+    stats->decode_stall = 0;
+    stats->instructions = 0;
+    stats->mem_stall = 0;
+    stats->read_hit = 0;
+    stats->read_miss = 0;
+    stats->write_hit = 0;
+    stats->write_miss = 0;
+}
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->pc = 0;
@@ -41,9 +51,12 @@ void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
     core->is_halt = 0;
     core->data_hazzard = 0;
     core->prev_cache_miss = 0;
+    core->prev_mem_inst_pc = -1;
     read_imem(imem, core);
     core->trace_file = trace_file;
     core->Cache = (cache*)calloc(1, sizeof(cache));
+    core->core_stats = (core_stats*)calloc(1,sizeof(core_stats));
+    init_core_stats(core->core_stats);
     init_cache(core->Cache);
     core->IF_op = (operation*)calloc(1, sizeof(operation));
     init_operation(core->IF_op);
@@ -117,6 +130,8 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
 
     data_hazzard = 0;
 
+    core->core_stats->cycles = clock_cycle;
+
     if(core->is_halt == 1){ // will be true only when the halt instruction in EX stage
         core->ID_op->empty = 1;
         core->IF_op->empty = 1;
@@ -161,9 +176,13 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
                     core->pc = core->next_pc;
                 }
             }
+            if(core->prev_cache_miss != MISS && cache_hit == MISS){
+                core->core_stats->mem_stall++;
+            }
     }
     
     else{
+        core->core_stats->mem_stall++;
         core->WB_op->empty = 1;
 
         print_trace(core, clock_cycle);
@@ -333,15 +352,32 @@ int MEM_ex(single_core* core){
     int res = 0;
     if(core->MEM_op->code == LW){
         res = read_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        // mesi_state_machine(Bus);
+        if(res == MISS){
+            if((core->prev_cache_miss != MISS) && (core->prev_mem_inst_pc != core->MEM_op->op_pc)){ //It is the first miss of this instruction
+                core->core_stats->read_miss ++;
+            }
+        }
+        else if(res == HIT){
+            core->core_stats->read_hit++;
+        }
+        core->prev_mem_inst_pc = core->MEM_op->op_pc;
         return res;
     }
     else if (core->MEM_op->code == SW){
         res = write_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        // mesi_state_machine(Bus);
+        if(res == MISS){
+            if((core->prev_cache_miss != MISS) && (core->prev_mem_inst_pc != core->MEM_op->op_pc)){ //It is the first miss of this instruction
+                core->core_stats->write_miss ++;
+            }
+        }
+        else if(res == HIT){
+            core->core_stats->write_hit++;
+        }
+        core->prev_mem_inst_pc = core->MEM_op->op_pc;
         return res;
     }
     else{
+        core->prev_mem_inst_pc = -1;
         return 0;
     }
 }
@@ -404,6 +440,7 @@ void end_clock_sycle(single_core* core, int data_hazzard){
         proceed_reg_data(core->WB_op, core->MEM_op);
         proceed_reg_data(core->MEM_op, core->EX_op);
         core->EX_op->empty = 1;
+        core->core_stats->decode_stall++;
     }
     else{
         proceed_reg_data(core->WB_op, core->MEM_op);
@@ -452,6 +489,23 @@ void print_trace(single_core* core, int clock_cycle){
     }
 
     fprintf(core->trace_file,"%08X %08X %08X %08X %08X %08X %08X %08X %08X %08X %08X %08X %08X %08X \n", core->Reg_File[2], core->Reg_File[3], core->Reg_File[4], core->Reg_File[5], core->Reg_File[6], core->Reg_File[7], core->Reg_File[8], core->Reg_File[9], core->Reg_File[10], core->Reg_File[11], core->Reg_File[12], core->Reg_File[13], core->Reg_File[14], core->Reg_File[15]);
+}
+
+void print_regs(single_core* core, FILE* regs){
+    for(int i = 2; i <= 15; i++){
+        fprintf(regs, "%08X\n", core->Reg_File[i]);
+    }
+}
+
+void print_stats(single_core* core, FILE* stats_file){
+    fprintf(stats_file, "cycles %i\n", (core->core_stats->cycles + 1)); // cycle count starts from 0
+    fprintf(stats_file, "instructions %i\n", core->core_stats->instructions);
+    fprintf(stats_file, "read_hit %i\n", core->core_stats->read_hit);
+    fprintf(stats_file, "write_hit %i\n", core->core_stats->write_hit);
+    fprintf(stats_file, "read_miss %i\n", core->core_stats->read_miss);
+    fprintf(stats_file, "write_miss %i\n", core->core_stats->write_miss);
+    fprintf(stats_file, "decode_stall %i\n", core->core_stats->decode_stall);
+    fprintf(stats_file, "mem_stall %i\n", core->core_stats->mem_stall);
 }
 /* **********************************************************/
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
