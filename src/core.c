@@ -100,10 +100,16 @@ int is_relevant_rd(operation* op){
 
 int detect_data_hazzard(single_core* core){
     if(core->ID_op->code == SW){
-        if((((core->ID_op->rd == core->EX_op->rd) && (core->EX_op->empty != 1) && (core->EX_op->rd != 0)  && (core->EX_op->rd != 1) && is_relevant_rd(core->EX_op)) ||
+        if(((core->ID_op->rd == core->EX_op->rd) && (core->EX_op->empty != 1) && (core->EX_op->rd != 0)  && (core->EX_op->rd != 1) && is_relevant_rd(core->EX_op)) ||
            ((core->ID_op->rd == core->MEM_op->rd) && (core->MEM_op->empty != 1)  && (core->MEM_op->rd != 0) && (core->MEM_op->rd != 1) && is_relevant_rd(core->MEM_op))|| 
-           ((core->ID_op->rd == core->WB_op->rd) && (core->WB_op->empty != 1)) && (core->WB_op->rd != 0) && (core->WB_op->rd != 1) && is_relevant_rd(core->WB_op)) 
-           && (core->ID_op->rd != 0) && (core->ID_op->rd != 1)){
+           ((core->ID_op->rd == core->WB_op->rd) && (core->WB_op->empty != 1) && (core->WB_op->rd != 0) && (core->WB_op->rd != 1) && is_relevant_rd(core->WB_op)) ||
+           ((core->ID_op->rs == core->EX_op->rd) && (core->EX_op->empty != 1) && (core->EX_op->rd != 0)  && (core->EX_op->rd != 1) && is_relevant_rd(core->EX_op)) ||
+           ((core->ID_op->rt == core->EX_op->rd) && (core->EX_op->empty != 1) && (core->EX_op->rd != 0)  && (core->EX_op->rd != 1) && is_relevant_rd(core->EX_op)) ||
+           ((core->ID_op->rs == core->MEM_op->rd) && (core->MEM_op->empty != 1)  && (core->MEM_op->rd != 0) && (core->MEM_op->rd != 1) && is_relevant_rd(core->MEM_op))||
+           ((core->ID_op->rt == core->MEM_op->rd) && (core->MEM_op->empty != 1)  && (core->MEM_op->rd != 0) && (core->MEM_op->rd != 1) && is_relevant_rd(core->MEM_op))||
+           ((core->ID_op->rs == core->WB_op->rd) && (core->WB_op->empty != 1) && (core->WB_op->rd != 0) && (core->WB_op->rd != 1) && is_relevant_rd(core->WB_op)) ||
+           ((core->ID_op->rt == core->WB_op->rd) && (core->WB_op->empty != 1) && (core->WB_op->rd != 0) && (core->WB_op->rd != 1) && is_relevant_rd(core->WB_op)) 
+           && (core->ID_op->rd != 0) && (core->ID_op->rd != 1)) {
             return 1;
         }
         else{
