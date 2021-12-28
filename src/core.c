@@ -137,7 +137,7 @@ void simulate_clock_cycle( int core_num, int clock_cycle, int* halt){
     data_hazzard = 0;
 
     core->core_stats->cycles = clock_cycle;
-
+    
     if(core->is_halt == 1){ // will be true only when the halt instruction in EX stage
         core->ID_op->empty = 1;
         core->IF_op->empty = 1;

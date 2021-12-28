@@ -5,7 +5,6 @@
 
 // initiate the 4 cores - cores declaration in in sim.h
 void init_cores(single_core** cores){
-    
     single_core *c0 = (single_core*)calloc(1, sizeof(single_core));
     init_core(files->core0trace, files->imem0, c0, 0);
     single_core *c1 = (single_core*)calloc(1, sizeof(single_core));
@@ -29,6 +28,9 @@ void init_main_memory(FILE *memin){
     Memory->data[j] = temp;
     j++;
   }
+  
+
+  j-- ;
   while (j < 1048576) {
 		Memory->data[j] = 0;
 		j++;
@@ -62,18 +64,18 @@ void print_all_stats(){
 int main(int argc, char* argv[]) {
     int *cores_done[cores_count];
     int clock_cycle = 0 ;
+    FILE *core0cache  = fopen("core0cache.txt" ,"w") ;
     
     if(argc == 27){
         files = init_files(files, argv);
     } else { 
         files = init_files_def(files);
     }
-
     init_cores_done(cores_done);
     init_cores(cores);
     initiate_memory_system();
     init_main_memory(files->memin);
-    
+
     while( *cores_done[0] == 0 || *cores_done[1] == 0 || *cores_done[2] == 0 || *cores_done[3] == 0){
         for (int i = 0; i < cores_count; i++)
         {
@@ -84,10 +86,12 @@ int main(int argc, char* argv[]) {
        
         mesi_state_machine(files, clock_cycle); //check with omri about cyc++
         clock_cycle ++ ;
+
     }
     // write_memout(files->memout);
 
     print_all_regs();
     print_all_stats();
     dump_memory(files);
+    print_cache(core0cache, CACHES[0]);
 }
