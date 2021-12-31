@@ -389,6 +389,8 @@ int MEM_ex(single_core* core){
 }
 
 int WB_ex(single_core* core){
+
+    core->core_stats->instructions++;
     
     if(core->WB_op->code == HALT){
         return 1;
@@ -503,13 +505,13 @@ void print_regs(single_core* core, FILE* regs){
     }
 }
 
-void print_stats(single_core* core, FILE* stats_file){
+void print_stats(int core_num, single_core* core, FILE* stats_file){
     fprintf(stats_file, "cycles %i\n", (core->core_stats->cycles + 1)); // cycle count starts from 0
-    fprintf(stats_file, "instructions %i\n", core->core_stats->instructions);
-    fprintf(stats_file, "read_hit %i\n", core->core_stats->read_hit);
-    fprintf(stats_file, "write_hit %i\n", core->core_stats->write_hit);
-    fprintf(stats_file, "read_miss %i\n", core->core_stats->read_miss);
-    fprintf(stats_file, "write_miss %i\n", core->core_stats->write_miss);
+    fprintf(stats_file, "instructions %i\n", ((core->core_stats->cycles - 3)- core->core_stats->mem_stall - core->core_stats->decode_stall));
+    fprintf(stats_file, "read_hit %i\n", (num_of_read_req[core_num] - num_of_read_miss[core_num]));
+    fprintf(stats_file, "write_hit %i\n", (num_of_write_req[core_num] - num_of_write_miss[core_num]));
+    fprintf(stats_file, "read_miss %i\n", num_of_read_miss[core_num]);
+    fprintf(stats_file, "write_miss %i\n", num_of_write_miss[core_num]);
     fprintf(stats_file, "decode_stall %i\n", core->core_stats->decode_stall);
     fprintf(stats_file, "mem_stall %i\n", core->core_stats->mem_stall);
 }

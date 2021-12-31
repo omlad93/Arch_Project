@@ -158,6 +158,12 @@ int last_time_served[CACHE_COUNT]; //= {0};                           // array f
 int waited_cycles;                                                 // counter when accessing main memory;
 FILE* bus_trace;
  
+// FOR CORE STATISTICS
+int *num_of_read_req[CACHE_COUNT];
+int *num_of_write_req[CACHE_COUNT];
+int *num_of_read_miss[CACHE_COUNT];
+int *num_of_write_miss[CACHE_COUNT];
+
 
 // // Use static Variables to allow strict compilation :)
 // int compilation_crap(int x) {return (cache_idx + request_id + cycle + waited_cycles +\

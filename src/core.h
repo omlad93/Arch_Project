@@ -203,7 +203,7 @@ void print_trace(single_core* core, int clock_cycle);
 
 void print_regs(single_core* core, FILE* regs);
 
-void print_stats(single_core* core, FILE* regs);
+void print_stats(int core_num, single_core* core, FILE* regs);
 
 int detect_data_hazzard(single_core* core);
 

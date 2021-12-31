@@ -13,6 +13,13 @@ void init_cores(single_core** cores){
     init_core(files->core2trace, files->imem2, c2, 2);
     single_core *c3 = (single_core*)calloc(1, sizeof(single_core));
     init_core(files->core3trace, files->imem3, c3, 3);
+
+    for(int i = 0; i < CACHE_COUNT; i++){
+        num_of_read_req[i] = 0;
+        num_of_write_req[i] = 0;
+        num_of_read_miss[i] = 0;
+        num_of_write_miss[i] = 0;
+    }
 }
     
 
@@ -55,10 +62,10 @@ void print_all_regs(){
 }
 
 void print_all_stats(){
-    print_stats(cores[0], files->stats0);
-    print_stats(cores[1], files->stats1);
-    print_stats(cores[2], files->stats2);
-    print_stats(cores[3], files->stats3);
+    print_stats(0, cores[0], files->stats0);
+    print_stats(1, cores[1], files->stats1);
+    print_stats(2, cores[2], files->stats2);
+    print_stats(3, cores[3], files->stats3);
 }
 
 int main(int argc, char* argv[]) {

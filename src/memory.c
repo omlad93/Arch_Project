@@ -127,9 +127,11 @@ int read_word(int address, cache_p cache, int* dest_reg){
     int blk = _get_block(address);
     if (query(address,cache,BusRd) == HIT){
         *dest_reg = cache->cache_data[_get_idx(address)];
+        num_of_read_req[cache->idx]++;
         return HIT;
     }
     else if( (cache->busy) == 0) {
+        num_of_read_miss[cache->idx]++;
         // generate a mesi transaction
         cache -> busy = 1;                      // ignore same calls
         if (need_to_evict( blk, cache) ) {
@@ -161,9 +163,11 @@ int write_word(int address, cache_p cache, int* src_reg){
     if (query(address,cache, BusRdX) == HIT){
         cache->cache_data[_get_idx(address)] = data;
         cache->mesi_state[_get_block(address)] = Modified;
+        num_of_write_req[cache->idx]++;
         return HIT; 
     }
     else if( (cache->busy) == 0) {
+        num_of_write_miss[cache->idx]++;
         if (need_to_evict( blk, cache) ) {
             // generate eviction
             cache -> next_evict -> cmd = BusFlush;
