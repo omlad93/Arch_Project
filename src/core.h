@@ -52,11 +52,6 @@
 
 typedef struct stats{
 	int cycles;
-	int instructions;
-	int read_hit;
-	int read_miss;
-	int write_hit;
-	int write_miss;
 	int decode_stall;
 	int mem_stall;
 } core_stats;

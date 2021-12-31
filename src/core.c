@@ -37,12 +37,7 @@ void init_operation(operation* op){
 void init_core_stats(core_stats* stats){
     stats->cycles = 0;
     stats->decode_stall = 0;
-    stats->instructions = 0;
     stats->mem_stall = 0;
-    stats->read_hit = 0;
-    stats->read_miss = 0;
-    stats->write_hit = 0;
-    stats->write_miss = 0;
 }
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num){
@@ -356,29 +351,13 @@ void EX_ex(int core_num){
 
 int MEM_ex(single_core* core){
     int res = 0;
-    if(core->MEM_op->code == LW){
+    if((core->MEM_op->code == LW) && (core->MEM_op->empty != 1)){
         res = read_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        if(res == MISS){
-            if((core->prev_cache_miss != MISS) && (core->prev_mem_inst_pc != core->MEM_op->op_pc)){ //It is the first miss of this instruction
-                core->core_stats->read_miss ++;
-            }
-        }
-        else if(res == HIT){
-            core->core_stats->read_hit++;
-        }
         core->prev_mem_inst_pc = core->MEM_op->op_pc;
         return res;
     }
-    else if (core->MEM_op->code == SW){
+    else if ((core->MEM_op->code == SW)  && (core->MEM_op->empty != 1)){
         res = write_word(core->MEM_op->addr, core->Cache, &(core->MEM_op->rd_val));
-        if(res == MISS){
-            if((core->prev_cache_miss != MISS) && (core->prev_mem_inst_pc != core->MEM_op->op_pc)){ //It is the first miss of this instruction
-                core->core_stats->write_miss ++;
-            }
-        }
-        else if(res == HIT){
-            core->core_stats->write_hit++;
-        }
         core->prev_mem_inst_pc = core->MEM_op->op_pc;
         return res;
     }
@@ -390,13 +369,12 @@ int MEM_ex(single_core* core){
 
 int WB_ex(single_core* core){
 
-    core->core_stats->instructions++;
     
     if(core->WB_op->code == HALT){
         return 1;
     }
     else{
-        if(core->WB_op->rd != 0 && core->WB_op->rd != 1){ // Won't write to registers r0 and r1
+        if((core->WB_op->rd != 0 && core->WB_op->rd != 1) && (core->WB_op->empty != 1)){ // Won't write to registers r0 and r1
             core->Reg_File[core->WB_op->rd] = core->WB_op->rd_val;
         }
         return 0;

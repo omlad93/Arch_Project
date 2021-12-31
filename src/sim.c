@@ -101,5 +101,5 @@ int main(int argc, char* argv[]) {
     print_all_regs();
     print_all_stats();
     dump_memory(files);
-    print_cache(core0cache, CACHES[0]);
+    printf("Simulator is Done. goodbye :)");
 }
