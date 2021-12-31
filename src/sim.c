@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "sim.h"
 // Check if the files exists any way and just needs the parametetrs because there wasnt on the argv 
 // or I understand right and we need to open them from scratch 

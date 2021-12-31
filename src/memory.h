@@ -1,4 +1,4 @@
-
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -159,10 +159,10 @@ int waited_cycles;                                                 // counter wh
 FILE* bus_trace;
  
 // FOR CORE STATISTICS
-int *num_of_read_req[CACHE_COUNT];
-int *num_of_write_req[CACHE_COUNT];
-int *num_of_read_miss[CACHE_COUNT];
-int *num_of_write_miss[CACHE_COUNT];
+int num_of_read_req[CACHE_COUNT];
+int num_of_write_req[CACHE_COUNT];
+int num_of_read_miss[CACHE_COUNT];
+int num_of_write_miss[CACHE_COUNT];
 
 
 // // Use static Variables to allow strict compilation :)

@@ -92,7 +92,6 @@ void dump_cache(cache_p c, FILE* dsram, FILE* tsram){
 
 // print all memory components memory in 'dumb' format
 void dump_memory(sim_files_p files_p){
-    int meta_data, blk;
     for (int i=0; i <mem_size; i++ ){
         fprintf(files_p->memout,"%08x\n",Memory->data[i]);
     }
@@ -242,7 +241,7 @@ void generate_transaction(bus_request_p request, int clock_cycle){
 
 // check if data is also cached in other caches
 int is_shared(int requestor, int address){
-    int stored, need_to_check, shared=0;
+    int need_to_check, shared=0;
     for (int i=0; i< CACHE_COUNT; i++){
         need_to_check = ((i != requestor) && (CACHES[i] != NULL));
         if (need_to_check)  {

@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "memory.h"
 #include "files.h"
 
@@ -48,24 +49,6 @@
 #define LSB_9BIT 0x000001FF
 #define MEM_SIZE 1024
 
-typedef struct registers_s {
-	// 8 bit opcode
-	int opcode;
-
-	// 4 bit destination register index
-	int rd;
-
-	// 4 bit source #0 register index
-	int rs;
-
-	// 4 bit source #1 register index
-	int rt;
-
-} registers_s;
-
-/*typedef struct pipeline_registers {
-		registers_s *spro, *sprn;
-}pipeline_registers;*/
 
 typedef struct stats{
 	int cycles;
@@ -120,17 +103,9 @@ typedef struct core {
 
 } single_core;
 
-/*   SIMP REGISTERS    */
-// int REG_FILE[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-// pipeline_registers *IF_ID;
-// pipeline_registers *ID_EX;
-// pipeline_registers *EX_MEM;
-// pipeline_registers *MEM_WB;
 
 single_core* cores[cores_count]; // array of cores in the CPU
-// int fuck_this(){
-// 	return cores[0]->pc;
-// } 
+
 
 /* **********************************************************/
 /*  ~~~~~~~~~~~~~    SIMP OP CODES OPERATIONS ~~~~~~~~~~~~  */
@@ -191,9 +166,15 @@ int WB_ex(single_core* core);
 receives the core, the number of the click cycle and a pointer to int that indicates wheter to end the execution of this core*/
 void simulate_clock_cycle(int core_num, int clock_cycle, int* halt);
 
-//void start_clock_cycle(single_core* core);
-
 void end_clock_sycle(single_core* core, int data_hazzard);
+
+int detect_data_hazzard(single_core* core);
+
+
+/* **********************************************************/
+/*  ~~~~~~~~~~  Initializing and print functions ~~~~~~~~~  */
+/* **********************************************************/
+void init_operation(operation* op);
 
 void init_core(FILE* trace_file, FILE* imem, single_core* core, int core_num);
 
@@ -204,14 +185,6 @@ void print_trace(single_core* core, int clock_cycle);
 void print_regs(single_core* core, FILE* regs);
 
 void print_stats(int core_num, single_core* core, FILE* regs);
-
-int detect_data_hazzard(single_core* core);
-
-void init_operation(operation* op);
-
-//void get_IF_ID_sprn(pipeline_registers* sprn);
-
-//void core_exec(single_core* core);
 
 #endif
 
